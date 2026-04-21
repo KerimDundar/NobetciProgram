@@ -83,6 +83,97 @@ DRAG_TARGET_BORDER = PRIMARY_COLOR
 DRAG_FLASH_BG = BORDER_COLOR
 DRAG_FLASH_BORDER = PRIMARY_COLOR
 
+THEMES = {
+    "dark": {
+        "bg": "#0f172a",
+        "card": "#1e293b",
+        "primary": "#3b82f6",
+        "hover": "#2563eb",
+        "text": "#e2e8f0",
+        "muted": "#94a3b8",
+        "border": "#334155",
+        "muted_surface": "#334155",
+        "entry": "#020617",
+        "tree_bg": "#1e293b",
+        "tree_alt": "#0f172a",
+        "tree_header": "#334155",
+        "danger": "#3b82f6",
+        "button_text": "#ffffff",
+    },
+    "light": {
+        "bg": "#f3f4f6",
+        "card": "#ffffff",
+        "primary": "#2563eb",
+        "hover": "#1d4ed8",
+        "text": "#111827",
+        "muted": "#64748b",
+        "border": "#cbd5e1",
+        "muted_surface": "#e5e7eb",
+        "entry": "#ffffff",
+        "tree_bg": "#ffffff",
+        "tree_alt": "#f8fafc",
+        "tree_header": "#e5e7eb",
+        "danger": "#dc2626",
+        "button_text": "#ffffff",
+    },
+}
+
+
+def _normalize_theme(value: str) -> str:
+    return value if value in THEMES else "dark"
+
+
+def _set_theme_colors(theme_name: str) -> None:
+    palette = THEMES[_normalize_theme(theme_name)]
+    globals().update(
+        {
+            "BG_COLOR": palette["bg"],
+            "CARD_COLOR": palette["card"],
+            "PRIMARY_COLOR": palette["primary"],
+            "HOVER_COLOR": palette["hover"],
+            "TEXT_COLOR": palette["text"],
+            "MUTED_TEXT": palette["muted"],
+            "BORDER_COLOR": palette["border"],
+            "ENTRY_BG": palette["entry"],
+            "WHITE_TEXT": palette["button_text"],
+            "APP_BG": palette["bg"],
+            "SURFACE_BG": palette["card"],
+            "SURFACE_ALT_BG": palette["card"],
+            "SURFACE_MUTED_BG": palette["muted_surface"],
+            "CARD_BORDER": palette["border"],
+            "STATUS_CARD_BORDER": palette["border"],
+            "MUTED_TEXT_COLOR": palette["muted"],
+            "STATUS_CAPTION_COLOR": palette["muted"],
+            "BTN_BG": palette["primary"],
+            "BTN_HOVER_BG": palette["hover"],
+            "ACCENT_BG": palette["primary"],
+            "ACCENT_HOVER_BG": palette["hover"],
+            "ACCENT_ACTIVE_BG": palette["hover"],
+            "SECONDARY_BG": palette["primary"],
+            "SECONDARY_HOVER_BG": palette["hover"],
+            "NEUTRAL_BG": palette["primary"],
+            "NEUTRAL_HOVER_BG": palette["hover"],
+            "DANGER_BG": palette["danger"],
+            "DANGER_HOVER_BG": palette["hover"],
+            "DANGER_TEXT": palette["button_text"],
+            "TREE_BG": palette["tree_bg"],
+            "TREE_ALT_ROW_BG": palette["tree_alt"],
+            "TREE_HEADER_BG": palette["tree_header"],
+            "TREE_SELECTED_BG": palette["primary"],
+            "WEEK_HEADER_BG": palette["tree_header"],
+            "GRID_ENTRY_BG": palette["entry"],
+            "GRID_ENTRY_BORDER": palette["border"],
+            "GRID_ENTRY_FOCUS_BORDER": palette["primary"],
+            "DRAG_SOURCE_BG": palette["primary"],
+            "DRAG_SOURCE_BORDER": palette["primary"],
+            "DRAG_TARGET_BG": palette["hover"],
+            "DRAG_TARGET_BORDER": palette["primary"],
+            "DRAG_FLASH_BG": palette["border"],
+            "DRAG_FLASH_BORDER": palette["primary"],
+        }
+    )
+
+
 SPACE_1 = 4
 SPACE_2 = 8
 SPACE_3 = 12
@@ -1017,12 +1108,14 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Nöbet Çizelgesi")
+        self.state = _state_dict(load_state())
+        self.theme_name = _normalize_theme(_state_str(self.state, "theme", "dark"))
+        _set_theme_colors(self.theme_name)
         self.configure(bg=APP_BG)
         self.option_add("*TButton.takeFocus", 0)
         self._font_family = FONT_FAMILY
         self._setup_styles()
 
-        self.state = _state_dict(load_state())
         self.workbook_path = self.state.get("workbook_path")
         if self.workbook_path and not Path(self.workbook_path).exists():
             self.workbook_path = None
@@ -1041,6 +1134,7 @@ class App(tk.Tk):
         self.last_output = dict(state_last_output) if isinstance(state_last_output, dict) else state_last_output
         self.month_generated = _copy_weeks(self.state.get("month_generated", []))
         self.edit_window = None
+        self.theme_toggle_var = tk.StringVar(value=self._theme_icon())
         self.preview_visible_var = tk.BooleanVar(value=True)
         self.preview_weeks = []
         self._preview_item_map = {}
@@ -1049,6 +1143,74 @@ class App(tk.Tk):
 
         self._build_ui()
         self._refresh_preview()
+        self.after(0, self._apply_preview_window_size)
+
+    def _apply_preview_window_size(self):
+        self.update_idletasks()
+
+        if self.preview_visible_var.get() and len(self.preview_weeks) > 0:
+            tree_height = self.tree.winfo_height()
+            required_tree_height = max(tree_height, self.tree.winfo_reqheight())
+            extra_ui_height = max(0, self.winfo_reqheight() - self.tree.winfo_reqheight())
+            width = max(DEFAULT_MIN_SIZE[0], self.winfo_reqwidth())
+            total_height = max(DEFAULT_MIN_SIZE[1], required_tree_height + extra_ui_height)
+
+            self.minsize(width, total_height)
+
+            current_w = self.winfo_width()
+            current_h = self.winfo_height()
+            if current_w < width or current_h < total_height:
+                self.geometry(f"{max(current_w, width)}x{max(current_h, total_height)}")
+            return
+
+        self.minsize(*DEFAULT_MIN_SIZE)
+
+    def _theme_icon(self) -> str:
+        return "☀️" if self.theme_name == "light" else "🌙"
+
+    def _toggle_theme(self):
+        next_theme = "light" if self.theme_name == "dark" else "dark"
+        self._apply_theme(next_theme, persist=True)
+
+    def _apply_theme(self, theme_name: str, persist: bool = False):
+        self.theme_name = _normalize_theme(theme_name)
+        _set_theme_colors(self.theme_name)
+        self._setup_styles()
+        self._apply_theme_to_tk_widgets(self)
+        self._refresh_tree_theme()
+        if hasattr(self, "theme_toggle_var"):
+            self.theme_toggle_var.set(self._theme_icon())
+        if persist:
+            self._persist()
+
+    def _apply_theme_to_tk_widgets(self, widget):
+        if isinstance(widget, (tk.Tk, tk.Toplevel)):
+            widget.configure(bg=APP_BG)
+        elif isinstance(widget, tk.Frame):
+            widget.configure(bg=SURFACE_BG, highlightbackground=STATUS_CARD_BORDER, highlightcolor=STATUS_CARD_BORDER)
+        elif isinstance(widget, tk.Entry):
+            widget.configure(
+                bg=GRID_ENTRY_BG,
+                fg=TEXT_COLOR,
+                insertbackground=TEXT_COLOR,
+                highlightbackground=GRID_ENTRY_BORDER,
+                highlightcolor=GRID_ENTRY_FOCUS_BORDER,
+            )
+        for child in widget.winfo_children():
+            self._apply_theme_to_tk_widgets(child)
+
+    def _refresh_tree_theme(self):
+        if not hasattr(self, "tree"):
+            return
+        self.tree.tag_configure("row_even", background=TREE_BG)
+        self.tree.tag_configure("row_odd", background=TREE_ALT_ROW_BG)
+        self.tree.tag_configure(
+            "week_header",
+            background=WEEK_HEADER_BG,
+            foreground=TEXT_COLOR,
+            font=FONT_BOLD,
+        )
+        self.tree.tag_configure("week_spacer", background=APP_BG)
 
     def _parse_date(self, s: Optional[str]) -> Optional[date]:
         if not s:
@@ -1339,6 +1501,7 @@ class App(tk.Tk):
         hero.grid(row=0, column=0, sticky="ew")
         hero.columnconfigure(0, weight=1)
         hero.columnconfigure(1, weight=0)
+        hero.columnconfigure(2, weight=0)
 
         ttk.Label(hero, text="Nöbet Çizelgesi", style="HeroTitle.TLabel").grid(row=0, column=0, sticky="w")
         ttk.Label(
@@ -1351,11 +1514,18 @@ class App(tk.Tk):
             text=f"Bugün: {date.today().strftime('%d.%m.%Y')}",
             style="HeaderDate.TLabel",
         ).grid(row=0, column=1, rowspan=2, sticky="ne", padx=(SPACE_4, 0))
+        ttk.Button(
+            hero,
+            textvariable=self.theme_toggle_var,
+            width=3,
+            style="Mini.TButton",
+            command=self._toggle_theme,
+        ).grid(row=0, column=2, rowspan=2, sticky="ne", padx=(SPACE_2, 0))
 
-        ttk.Separator(hero, orient="horizontal").grid(row=2, column=0, columnspan=2, sticky="ew", pady=(SPACE_4, SPACE_4))
+        ttk.Separator(hero, orient="horizontal").grid(row=2, column=0, columnspan=3, sticky="ew", pady=(SPACE_4, SPACE_4))
 
         info_strip = ttk.Frame(hero, style="InfoStrip.TFrame", padding=(SPACE_1, SPACE_1, SPACE_1, SPACE_1))
-        info_strip.grid(row=3, column=0, columnspan=2, sticky="ew")
+        info_strip.grid(row=3, column=0, columnspan=3, sticky="ew")
         for col in range(3):
             info_strip.columnconfigure(col, weight=1)
 
@@ -1522,7 +1692,7 @@ class App(tk.Tk):
             self.table_card.rowconfigure(2, weight=0)
             self.table_card.grid_configure(sticky="ew")
             self.shell.rowconfigure(2, weight=0)
-        self.minsize(*(PREVIEW_MIN_SIZE if visible and len(self.preview_weeks) > 0 else DEFAULT_MIN_SIZE))
+        self.after(0, self._apply_preview_window_size)
 
     def _on_preview_mousewheel(self, event):
         if hasattr(event, "num") and event.num in (4, 5):
@@ -1681,12 +1851,12 @@ class App(tk.Tk):
             self._preview_scroll_rows = PREVIEW_MIN_VISIBLE_ROWS
             self.preview_title_var.set("Hafta Önizleme")
             self.preview_meta_var.set("Veri bekleniyor")
-            self.minsize(*DEFAULT_MIN_SIZE)
+            self.after(0, self._apply_preview_window_size)
             return
-        self.minsize(*(PREVIEW_MIN_SIZE if self.preview_visible_var.get() else DEFAULT_MIN_SIZE))
         first_week_rows = 1 + len(list(preview_weeks[0].get("locations", []) or []))
-        visible_rows = max(PREVIEW_MIN_VISIBLE_ROWS, min(PREVIEW_MAX_VISIBLE_ROWS, first_week_rows))
+        visible_rows = max(PREVIEW_MIN_VISIBLE_ROWS, first_week_rows + 2)
         self.tree.configure(height=visible_rows)
+        self.after(0, self._apply_preview_window_size)
         self._preview_scroll_rows = first_week_rows + (1 if week_count > 1 else 0)
         if week_count == 1:
             only = preview_weeks[0]
@@ -1736,6 +1906,7 @@ class App(tk.Tk):
 
     def _persist(self):
         state = {
+            "theme": self.theme_name,
             "workbook_path": self.workbook_path,
             "year": self.year,
             "current_title": self.current_title,
