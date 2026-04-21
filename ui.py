@@ -104,8 +104,8 @@ EDIT_GRID_MIN_ROWS = 5
 CALENDAR_COL_MINSIZE = 46
 CALENDAR_DAY_BTN_WIDTH = 4
 
-PDF_FILE_TYPES = [("PDF Dosyasi", "*.pdf")]
-EXCEL_FILE_TYPES = [("Excel Dosyasi", "*.xlsx")]
+PDF_FILE_TYPES = [("PDF Dosyası", "*.pdf")]
+EXCEL_FILE_TYPES = [("Excel Dosyası", "*.xlsx")]
 DEFAULT_PDF_FILENAME = "nobet_ciktisi.pdf"
 DEFAULT_EXCEL_FILENAME = "nobet_ciktisi.xlsx"
 
@@ -171,9 +171,9 @@ def save_state(state: dict) -> None:
 
 def _turkish_error_message(exc: Exception, generic_message: str) -> str:
     if isinstance(exc, FileNotFoundError):
-        return "Dosya bulunamadi."
+        return "Dosya bulunamadı."
     if isinstance(exc, PermissionError):
-        return "Dosyaya erisim izni yok."
+        return "Dosyaya erişim izni yok."
     if isinstance(exc, ValueError):
         text = str(exc).strip()
         if text:
@@ -245,25 +245,25 @@ def _copy_weeks(weeks) -> List[dict]:
 
 MONTH_NAMES_TR = [
     "OCAK",
-    "SUBAT",
+    "ŞUBAT",
     "MART",
-    "NISAN",
+    "NİSAN",
     "MAYIS",
-    "HAZIRAN",
+    "HAZİRAN",
     "TEMMUZ",
-    "AGUSTOS",
-    "EYLUL",
-    "EKIM",
+    "AĞUSTOS",
+    "EYLÜL",
+    "EKİM",
     "KASIM",
     "ARALIK",
 ]
-WEEKDAY_SHORT_TR = ["Pzt", "Sal", "Car", "Per", "Cum", "Cmt", "Paz"]
+WEEKDAY_SHORT_TR = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
 
 
 class CalendarPopup(tk.Toplevel):
     def __init__(self, master, selected_date: date, on_select):
         super().__init__(master)
-        self.title("Tarih Sec")
+        self.title("Tarih Seç")
         self.resizable(False, False)
         self.configure(bg=SURFACE_BG)
         self.transient(master.winfo_toplevel())
@@ -314,7 +314,7 @@ class CalendarPopup(tk.Toplevel):
 
         footer = ttk.Frame(container, style="App.TFrame")
         footer.grid(row=2, column=0, sticky="ew", pady=(8, 0))
-        ttk.Button(footer, text="Bugun", style="Mini.TButton", command=self._jump_today).pack(side="left")
+        ttk.Button(footer, text="Bugün", style="Mini.TButton", command=self._jump_today).pack(side="left")
         ttk.Button(footer, text="Kapat", style="Mini.TButton", command=self.destroy).pack(side="right")
 
         self.bind("<Escape>", lambda _e: self.destroy())
@@ -449,7 +449,7 @@ class EditWindow(tk.Toplevel):
         on_save,
     ):
         super().__init__(master)
-        self.title("Yeni / Hafta Duzenle")
+        self.title("Yeni / Hafta Düzenle")
         self.configure(bg=APP_BG)
         self.on_save = on_save
 
@@ -485,13 +485,13 @@ class EditWindow(tk.Toplevel):
         header.grid(row=0, column=0, sticky="ew")
         header.columnconfigure(0, weight=1)
         header.columnconfigure(1, weight=0)
-        ttk.Label(header, text="Yeni / Hafta Duzenle", style="DialogTitle.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(header, text="Yeni / Hafta Düzenle", style="DialogTitle.TLabel").grid(row=0, column=0, sticky="w")
         ttk.Label(
             header,
-            text="Tarihleri takvimden secin, tabloyu surukle-birak veya manuel duzenleyin.",
+            text="Tarihleri takvimden seçin, tabloyu sürükle-bırak veya manuel düzenleyin.",
             style="DialogSub.TLabel",
         ).grid(row=1, column=0, sticky="w", pady=(SPACE_1, 0))
-        today_text = f"Bugun: {date.today().strftime('%d.%m.%Y')}"
+        today_text = f"Bugün: {date.today().strftime('%d.%m.%Y')}"
         ttk.Label(header, text=today_text, style="DialogNow.TLabel").grid(row=0, column=1, rowspan=2, sticky="e")
         ttk.Separator(header, orient="horizontal").grid(row=2, column=0, columnspan=2, sticky="ew", pady=(SPACE_3, 0))
 
@@ -502,10 +502,10 @@ class EditWindow(tk.Toplevel):
         ttk.Label(info_card, text="Hafta Bilgileri", style="EditCardTitle.TLabel").grid(row=0, column=0, columnspan=4, sticky="w")
         ttk.Separator(info_card, orient="horizontal").grid(row=1, column=0, columnspan=4, sticky="ew", pady=(SPACE_2, SPACE_3))
 
-        ttk.Label(info_card, text="Baslangic", style="DialogField.TLabel").grid(row=2, column=0, sticky="w")
+        ttk.Label(info_card, text="Başlangıç", style="DialogField.TLabel").grid(row=2, column=0, sticky="w")
         self.start_picker = DatePicker(info_card, initial_date=start_date)
         self.start_picker.grid(row=2, column=1, sticky="w", padx=(SPACE_2, SPACE_5))
-        ttk.Label(info_card, text="Bitis", style="DialogField.TLabel").grid(row=2, column=2, sticky="w")
+        ttk.Label(info_card, text="Bitiş", style="DialogField.TLabel").grid(row=2, column=2, sticky="w")
         self.end_picker = DatePicker(info_card, initial_date=end_date)
         self.end_picker.grid(row=2, column=3, sticky="w", padx=(SPACE_2, 0))
 
@@ -513,7 +513,7 @@ class EditWindow(tk.Toplevel):
         ttk.Entry(info_card, textvariable=self.school_var, width=42).grid(
             row=3, column=1, sticky="ew", padx=(SPACE_2, SPACE_5), pady=(SPACE_3, 0)
         )
-        ttk.Label(info_card, text="Mudur", style="DialogField.TLabel").grid(row=3, column=2, sticky="w", pady=(SPACE_3, 0))
+        ttk.Label(info_card, text="Müdür", style="DialogField.TLabel").grid(row=3, column=2, sticky="w", pady=(SPACE_3, 0))
         ttk.Entry(info_card, textvariable=self.principal_var, width=42).grid(
             row=3, column=3, sticky="ew", padx=(SPACE_2, 0), pady=(SPACE_3, 0)
         )
@@ -522,7 +522,7 @@ class EditWindow(tk.Toplevel):
         table_card.grid(row=2, column=0, sticky="nsew")
         table_card.columnconfigure(0, weight=1)
         table_card.rowconfigure(2, weight=1)
-        ttk.Label(table_card, text="Nobet Dagilimi", style="EditCardTitle.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(table_card, text="Nöbet Dağılımı", style="EditCardTitle.TLabel").grid(row=0, column=0, sticky="w")
         ttk.Separator(table_card, orient="horizontal").grid(row=1, column=0, sticky="ew", pady=(SPACE_2, SPACE_2))
 
         self.grid_frame = ttk.Frame(table_card, style="TableCard.TFrame")
@@ -537,7 +537,7 @@ class EditWindow(tk.Toplevel):
         self._drag_passthrough = False
         self._edit_active_entry = None
         self._drag_threshold = 6
-        self._default_drag_status = "Surukle-birak: Sol tikla, basili tut, diger ogretmen kutusuna birak."
+        self._default_drag_status = "Sürükle-bırak: Sol tıkla, basılı tut, diğer öğretmen kutusuna bırak."
         self.drag_status_var = tk.StringVar(value=self._default_drag_status)
 
         self._history = []
@@ -554,9 +554,9 @@ class EditWindow(tk.Toplevel):
         btns.columnconfigure(0, weight=1)
         actions = ttk.Frame(btns, style="App.TFrame")
         actions.grid(row=0, column=1, sticky="e")
-        ttk.Button(actions, text="Satir Ekle", style="Secondary.TButton", command=self._add_row).grid(row=0, column=0, padx=(0, SPACE_2))
+        ttk.Button(actions, text="Satır Ekle", style="Secondary.TButton", command=self._add_row).grid(row=0, column=0, padx=(0, SPACE_2))
         ttk.Button(actions, text="Kaydet", style="Accent.TButton", command=self._save).grid(row=0, column=1, padx=(0, SPACE_2))
-        ttk.Button(actions, text="Vazgec", style="Secondary.TButton", command=self.destroy).grid(row=0, column=2)
+        ttk.Button(actions, text="Vazgeç", style="Secondary.TButton", command=self.destroy).grid(row=0, column=2)
 
         self.bind("<Control-z>", self._undo, add="+")
         self.bind("<Control-Z>", self._undo, add="+")
@@ -674,7 +674,7 @@ class EditWindow(tk.Toplevel):
             return "break"
         self._history_index -= 1
         self._restore_snapshot(self._history[self._history_index])
-        self.drag_status_var.set("Geri alindi (Ctrl+Z).")
+        self.drag_status_var.set("Geri alındı (Ctrl+Z).")
         return "break"
 
     def _redo(self, event=None):
@@ -682,7 +682,7 @@ class EditWindow(tk.Toplevel):
             return "break"
         self._history_index += 1
         self._restore_snapshot(self._history[self._history_index])
-        self.drag_status_var.set("Yinele uygulandi (Ctrl+Y).")
+        self.drag_status_var.set("Yinele uygulandı (Ctrl+Y).")
         return "break"
 
     def _build_grid(self):
@@ -702,7 +702,7 @@ class EditWindow(tk.Toplevel):
             self.grid_frame.columnconfigure(col, weight=1, minsize=EDIT_GRID_DAY_MINSIZE)
         self.grid_frame.columnconfigure(MAIN_TABLE_DAY_COUNT + 1, weight=0, minsize=EDIT_GRID_ACTION_MINSIZE)
 
-        ttk.Label(self.grid_frame, text="Gorev Yeri", style="GridHead.TLabel").grid(row=0, column=0, padx=2, pady=(2, 1), sticky="ew")
+        ttk.Label(self.grid_frame, text="Görev Yeri", style="GridHead.TLabel").grid(row=0, column=0, padx=2, pady=(2, 1), sticky="ew")
         for i, day in enumerate(DAY_NAMES, start=1):
             ttk.Label(self.grid_frame, text=day.title(), style="GridHead.TLabel").grid(row=0, column=i, padx=2, pady=(2, 1), sticky="ew")
             controls = ttk.Frame(self.grid_frame, style="EditCard.TFrame")
@@ -781,7 +781,7 @@ class EditWindow(tk.Toplevel):
         self._drag_start_xy = (event.x_root, event.y_root)
         self._drag_active = False
         self._set_teacher_entry_visual(widget, "source")
-        self.drag_status_var.set("Kaynak secildi. Basili tutup baska ogretmen kutusuna birak.")
+        self.drag_status_var.set("Kaynak seçildi. Basılı tutup başka öğretmen kutusuna bırak.")
         return "break"
 
     def _on_teacher_drag(self, event):
@@ -794,7 +794,7 @@ class EditWindow(tk.Toplevel):
             if abs(event.x_root - start_x) >= self._drag_threshold or abs(event.y_root - start_y) >= self._drag_threshold:
                 self._drag_active = True
                 self.configure(cursor="fleur")
-                self.drag_status_var.set("Hedef kutunun ustune gel ve birak.")
+                self.drag_status_var.set("Hedef kutunun üstüne gel ve bırak.")
 
         if not self._drag_active:
             return "break"
@@ -812,9 +812,9 @@ class EditWindow(tk.Toplevel):
         self._drag_hover_entry = target
         if target:
             self._set_teacher_entry_visual(target, "target")
-            self.drag_status_var.set("Birakinca iki ogretmen kutusu yer degistirecek.")
+            self.drag_status_var.set("Bırakınca iki öğretmen kutusu yer değiştirecek.")
         else:
-            self.drag_status_var.set("Gecerli hedef icin baska bir ogretmen kutusunun ustune gel.")
+            self.drag_status_var.set("Geçerli hedef için başka bir öğretmen kutusunun üstüne gel.")
         return "break"
 
     def _on_teacher_focus_out(self, event):
@@ -859,13 +859,13 @@ class EditWindow(tk.Toplevel):
                 self._edit_active_entry = source
                 source.focus_set()
                 source.icursor(tk.END)
-                self.drag_status_var.set("Duzenleme modu acildi. Yazabilir veya tekrar tiklayip secim yapabilirsin.")
+                self.drag_status_var.set("Düzenleme modu açıldı. Yazabilir veya tekrar tıklayıp seçim yapabilirsin.")
             else:
-                self.drag_status_var.set("Duzenleme hazir. Yazabilir veya surukle-birak yapabilirsin.")
+                self.drag_status_var.set("Düzenleme hazır. Yazabilir veya sürükle-bırak yapabilirsin.")
             return "break"
 
         if not target:
-            self.drag_status_var.set("Yer degistirme iptal: gecerli hedef secilmedi.")
+            self.drag_status_var.set("Yer değiştirme iptal: geçerli hedef seçilmedi.")
             return "break"
 
         source_val = source.get()
@@ -877,7 +877,7 @@ class EditWindow(tk.Toplevel):
         self._edit_active_entry = None
         self._record_history()
         self._flash_swapped_entries(source, target)
-        self.drag_status_var.set("Yer degistirildi.")
+        self.drag_status_var.set("Yer değiştirildi.")
         return "break"
 
     def _shift_day_column(self, day_col: int, direction: str):
@@ -942,7 +942,7 @@ class EditWindow(tk.Toplevel):
             if not loc and all(v == "" for v in values):
                 continue
             if not loc:
-                messagebox.showerror("Dogrulama", "Dolu bir satirda gorev yeri bos olamaz.")
+                messagebox.showerror("Doğrulama", "Dolu bir satırda görev yeri boş olamaz.")
                 return
             locations.append(loc)
             roster.append(values)
@@ -961,7 +961,7 @@ class EditWindow(tk.Toplevel):
 class RangeGenerateWindow(tk.Toplevel):
     def __init__(self, master, start_date_str, end_date_str, on_apply, on_month, on_next):
         super().__init__(master)
-        self.title("Tarih Araliginda Olustur")
+        self.title("Tarih Aralığında Oluştur")
         self.configure(bg=APP_BG)
         self.on_apply = on_apply
         self.on_month = on_month
@@ -981,18 +981,18 @@ class RangeGenerateWindow(tk.Toplevel):
         frame = ttk.Frame(self, padding=10)
         frame.grid(row=0, column=0, sticky="nsew")
 
-        ttk.Label(frame, text="Baslangic tarihi:").grid(row=0, column=0, sticky="w")
+        ttk.Label(frame, text="Başlangıç tarihi:").grid(row=0, column=0, sticky="w")
         self.start_picker = DatePicker(frame, initial_date=start_date)
         self.start_picker.grid(row=0, column=1, sticky="w", padx=5)
-        ttk.Label(frame, text="Bitis tarihi:").grid(row=1, column=0, sticky="w")
+        ttk.Label(frame, text="Bitiş tarihi:").grid(row=1, column=0, sticky="w")
         self.end_picker = DatePicker(frame, initial_date=end_date)
         self.end_picker.grid(row=1, column=1, sticky="w", padx=5)
 
         btns = ttk.Frame(frame, padding=(0, 10, 0, 0))
         btns.grid(row=2, column=0, columnspan=2, sticky="w")
-        ttk.Button(btns, text="Girilen Tarihi Olustur", style="Accent.TButton", command=self._apply).grid(row=0, column=0, padx=(0, 5))
-        ttk.Button(btns, text="Aylik Olustur", style="Accent.TButton", command=self._month).grid(row=0, column=1, padx=(0, 5))
-        ttk.Button(btns, text="Sonraki Haftayi Olustur", style="Accent.TButton", command=self._next).grid(row=0, column=2, padx=(0, 5))
+        ttk.Button(btns, text="Aralığı Uygula", style="Accent.TButton", command=self._apply).grid(row=0, column=0, padx=(0, 5))
+        ttk.Button(btns, text="Aylık Önizleme", style="Accent.TButton", command=self._month).grid(row=0, column=1, padx=(0, 5))
+        ttk.Button(btns, text="Sonraki Haftaya Geç", style="Accent.TButton", command=self._next).grid(row=0, column=2, padx=(0, 5))
         ttk.Button(btns, text="Kapat", style="Accent.TButton", command=self.destroy).grid(row=0, column=3)
 
     def _get_values(self):
@@ -1014,7 +1014,7 @@ class RangeGenerateWindow(tk.Toplevel):
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Nobet Cizelgesi")
+        self.title("Nöbet Çizelgesi")
         self.geometry("1220x760")
         self.minsize(1080, 680)
         self.configure(bg=APP_BG)
@@ -1340,15 +1340,15 @@ class App(tk.Tk):
         hero.columnconfigure(0, weight=1)
         hero.columnconfigure(1, weight=0)
 
-        ttk.Label(hero, text="Nobet Cizelgesi", style="HeroTitle.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(hero, text="Nöbet Çizelgesi", style="HeroTitle.TLabel").grid(row=0, column=0, sticky="w")
         ttk.Label(
             hero,
-            text="Haftalik planlama, rotasyon ve PDF/Excel cikti merkezi",
+            text="Haftalık planlama, rotasyon ve PDF/Excel çıktı merkezi",
             style="HeroSub.TLabel",
         ).grid(row=1, column=0, sticky="w", pady=(SPACE_2 - 1, 0))
         ttk.Label(
             hero,
-            text=f"Bugun: {date.today().strftime('%d.%m.%Y')}",
+            text=f"Bugün: {date.today().strftime('%d.%m.%Y')}",
             style="HeaderDate.TLabel",
         ).grid(row=0, column=1, rowspan=2, sticky="ne", padx=(SPACE_4, 0))
 
@@ -1360,13 +1360,13 @@ class App(tk.Tk):
             info_strip.columnconfigure(col, weight=1)
 
         self.info_file_var = tk.StringVar(value="(yok)")
-        self.info_week_var = tk.StringVar(value="(baslik yok)")
+        self.info_week_var = tk.StringVar(value="(başlık yok)")
         self.info_last_var = tk.StringVar(value="(yok)")
 
         info_cells = [
             ("Dosya", self.info_file_var),
             ("Mevcut Hafta", self.info_week_var),
-            ("Son Olusturulan", self.info_last_var),
+            ("Son Oluşturulan", self.info_last_var),
         ]
         for idx, (label_text, value_var) in enumerate(info_cells):
             cell = tk.Frame(
@@ -1400,39 +1400,43 @@ class App(tk.Tk):
             ttk.Separator(card, orient="horizontal").grid(row=2, column=0, sticky="ew", pady=(SPACE_2, SPACE_2))
             return card
 
-        data_card = _make_action_card("Veri", "Kaynak dosya ve hafta duzenleme", 0, (0, SPACE_2))
+        data_card = _make_action_card("Veri", "Kaynak dosya ve hafta düzenleme", 0, (0, SPACE_2))
         data_card.columnconfigure(0, weight=1)
-        ttk.Button(data_card, text="Excel Yukle", style="Accent.TButton", command=self.load_excel).grid(
+        ttk.Button(data_card, text="Excel Yükle", style="Accent.TButton", command=self.load_excel).grid(
             row=3, column=0, sticky="ew", pady=(0, card_button_gap)
         )
-        ttk.Button(data_card, text="Yeni / Hafta Duzenle", style="Accent.TButton", command=self.edit_week).grid(
+        ttk.Button(data_card, text="Yeni / Hafta Düzenle", style="Accent.TButton", command=self.edit_week).grid(
             row=4, column=0, sticky="ew", pady=(0, card_button_gap)
         )
-        ttk.Button(data_card, text="Cikis", style="Exit.TButton", command=self.destroy).grid(row=5, column=0, sticky="ew")
+        ttk.Button(data_card, text="Çıkış", style="Exit.TButton", command=self.destroy).grid(row=5, column=0, sticky="ew")
 
-        week_card = _make_action_card("Hafta", "Gecis ve otomatik olusturma", 1, (SPACE_1, SPACE_1))
+        week_card = _make_action_card("Hafta", "Geçiş ve otomatik oluşturma", 1, (SPACE_1, SPACE_1))
         week_card.columnconfigure(0, weight=1)
         week_card.columnconfigure(1, weight=1)
-        ttk.Button(week_card, text="Onceki Hafta", style="Secondary.TButton", command=self.generate_previous).grid(
+        ttk.Button(week_card, text="Önceki Haftaya Geç", style="Secondary.TButton", command=self.generate_previous).grid(
             row=3, column=0, sticky="ew", padx=(0, SPACE_1), pady=(0, card_button_gap)
         )
-        ttk.Button(week_card, text="Sonraki Hafta", style="Secondary.TButton", command=self.generate_next).grid(
+        ttk.Button(week_card, text="Sonraki Haftaya Geç", style="Secondary.TButton", command=self.generate_next).grid(
             row=3, column=1, sticky="ew", padx=(SPACE_1, 0), pady=(0, card_button_gap)
         )
-        ttk.Button(week_card, text="Tarih Araliginda Olustur", style="Accent.TButton", command=self.generate_range_outputs).grid(
+        ttk.Button(week_card, text="Mevcut Aralığı Önizle", style="Accent.TButton", command=self.generate_range_outputs).grid(
             row=4, column=0, columnspan=2, sticky="ew", pady=(0, card_button_gap)
         )
-        ttk.Button(week_card, text="Aylik Olustur", style="Accent.TButton", command=self.generate_month).grid(
+        ttk.Button(week_card, text="Aylık Önizleme", style="Accent.TButton", command=self.generate_month).grid(
             row=5, column=0, columnspan=2, sticky="ew"
         )
 
-        output_card = _make_action_card("Cikti", "PDF ve Excel disa aktarma", 2, (SPACE_2, 0))
+        output_card = _make_action_card("Çıktı", "PDF ve Excel dışa aktarma", 2, (SPACE_2, 0))
         output_card.columnconfigure(0, weight=1)
-        ttk.Button(output_card, text="PDF Disa Aktar", style="Accent.TButton", command=self.export_pdf).grid(
+        self.output_scope_var = tk.StringVar(value="Çıktı kapsamı: veri yok")
+        ttk.Label(output_card, textvariable=self.output_scope_var, style="ActionSub.TLabel", wraplength=320).grid(
             row=3, column=0, sticky="ew", pady=(0, card_button_gap)
         )
-        ttk.Button(output_card, text="Excel'i Farkli Kaydet", style="Secondary.TButton", command=self.save_excel_as).grid(
-            row=4, column=0, sticky="ew"
+        ttk.Button(output_card, text="PDF Dışa Aktar", style="Accent.TButton", command=self.export_pdf).grid(
+            row=4, column=0, sticky="ew", pady=(0, card_button_gap)
+        )
+        ttk.Button(output_card, text="Excel'i Farklı Kaydet", style="Secondary.TButton", command=self.save_excel_as).grid(
+            row=5, column=0, sticky="ew"
         )
 
         table_card = ttk.Frame(shell, style="TableCard.TFrame", padding=(SPACE_4, SPACE_4, SPACE_4, SPACE_3))
@@ -1440,9 +1444,9 @@ class App(tk.Tk):
         table_card.columnconfigure(0, weight=1)
         table_card.rowconfigure(2, weight=1)
 
-        self.preview_title_var = tk.StringVar(value="Hafta Onizleme")
+        self.preview_title_var = tk.StringVar(value="Hafta Önizleme")
         self.preview_meta_var = tk.StringVar(value="")
-        self.preview_toggle_var = tk.StringVar(value="Onizlemeyi Gizle")
+        self.preview_toggle_var = tk.StringVar(value="Tabloyu Gizle")
         header_row = ttk.Frame(table_card, style="TableCard.TFrame")
         header_row.grid(row=0, column=0, sticky="ew")
         header_row.columnconfigure(0, weight=1)
@@ -1479,12 +1483,12 @@ class App(tk.Tk):
         x_scroll = ttk.Scrollbar(self.preview_table_wrap, orient="horizontal", style="App.Horizontal.TScrollbar", command=self.tree.xview)
         x_scroll.grid(row=1, column=0, sticky="ew")
         self.tree.configure(yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set)
-        self.tree.bind("<Double-1>", self._begin_preview_cell_edit)
+        self.tree.bind("<Double-1>", lambda _event: "break")
         self.tree.bind("<MouseWheel>", self._on_preview_mousewheel)
         self.tree.bind("<Button-4>", self._on_preview_mousewheel)
         self.tree.bind("<Button-5>", self._on_preview_mousewheel)
 
-        self.tree.heading("Location", text="Gorev Yeri", anchor="w")
+        self.tree.heading("Location", text="Görev Yeri", anchor="w")
         self.tree.column("Location", width=MAIN_TREE_LOCATION_WIDTH, anchor="w", stretch=True)
         for day in DAY_NAMES:
             self.tree.heading(day, text=day.title(), anchor="center")
@@ -1505,7 +1509,7 @@ class App(tk.Tk):
     def _toggle_preview(self):
         visible = not self.preview_visible_var.get()
         self.preview_visible_var.set(visible)
-        self.preview_toggle_var.set("Onizlemeyi Gizle" if visible else "Onizlemeyi Goster")
+        self.preview_toggle_var.set("Tabloyu Gizle" if visible else "Tabloyu Göster")
         if visible:
             self.preview_separator.grid()
             self.preview_table_wrap.grid()
@@ -1611,7 +1615,7 @@ class App(tk.Tk):
         self._update_info_label()
 
     def _update_info_label(self):
-        title = self.current_title or "(baslik yok)"
+        title = self.current_title or "(başlık yok)"
         path = Path(self.workbook_path).name if self.workbook_path else "(yok)"
         preview_weeks = self._preview_weeks_for_export()
         week_label = self._format_preview_summary(preview_weeks) if preview_weeks else title
@@ -1624,6 +1628,10 @@ class App(tk.Tk):
         self.info_file_var.set(_ellipsize_middle(path, 34))
         self.info_week_var.set(_ellipsize_middle(week_label, 56))
         self.info_last_var.set(_ellipsize_middle(last, 56))
+        if preview_weeks:
+            self.output_scope_var.set(f"Çıktı kapsamı: {self._format_preview_summary(preview_weeks)}")
+        else:
+            self.output_scope_var.set("Çıktı kapsamı: veri yok")
 
     def _refresh_preview(self):
         self._close_preview_editor()
@@ -1668,7 +1676,7 @@ class App(tk.Tk):
             self.preview_weeks = []
             self.tree.configure(height=PREVIEW_MIN_VISIBLE_ROWS)
             self._preview_scroll_rows = PREVIEW_MIN_VISIBLE_ROWS
-            self.preview_title_var.set("Hafta Onizleme")
+            self.preview_title_var.set("Hafta Önizleme")
             self.preview_meta_var.set("Veri bekleniyor")
             return
         first_week_rows = 1 + len(list(preview_weeks[0].get("locations", []) or []))
@@ -1679,7 +1687,7 @@ class App(tk.Tk):
             only = preview_weeks[0]
             start_text = _format_iso_date(str(only.get("start_date", "") or ""))
             end_text = _format_iso_date(str(only.get("end_date", "") or ""))
-            self.preview_title_var.set("Hafta Onizleme")
+            self.preview_title_var.set("Hafta Önizleme")
             if start_text and end_text:
                 self.preview_meta_var.set(f"{start_text} - {end_text}")
             else:
@@ -1687,7 +1695,7 @@ class App(tk.Tk):
         else:
             first_start = _format_iso_date(str(preview_weeks[0].get("start_date", "") or ""))
             last_end = _format_iso_date(str(preview_weeks[-1].get("end_date", "") or ""))
-            self.preview_title_var.set("Hafta Onizleme")
+            self.preview_title_var.set("Hafta Önizleme")
             if first_start and last_end:
                 self.preview_meta_var.set(f"{week_count} hafta  |  {first_start} - {last_end}")
             else:
@@ -1703,7 +1711,7 @@ class App(tk.Tk):
                 if title:
                     header_text = f"{header_text}  |  {title}"
             else:
-                header_text = f"Hafta {week_idx}  |  {title or '(Baslik yok)'}"
+                header_text = f"Hafta {week_idx}  |  {title or '(Başlık yok)'}"
 
             self.tree.insert("", "end", values=[header_text, "", "", "", "", ""], tags=("week_header",))
             row_counter += 1
@@ -1740,13 +1748,13 @@ class App(tk.Tk):
 
     def _require_dates(self) -> bool:
         if not self.current_start or not self.current_end:
-            messagebox.showwarning("Eksik Tarih", "Lutfen Yeni/Hafta Duzenle ekranindan mevcut hafta tarihlerini girin.")
+            messagebox.showwarning("Eksik Tarih", "Lütfen Yeni/Hafta Düzenle ekranından mevcut hafta tarihlerini girin.")
             return False
         return True
 
     def _require_roster_data(self) -> bool:
         if not self.roster or not self.locations:
-            messagebox.showwarning("Eksik Cizelge", "Lutfen once mevcut hafta cizelgesini girin.")
+            messagebox.showwarning("Eksik Çizelge", "Lütfen önce mevcut hafta çizelgesini girin.")
             return False
         return True
 
@@ -1755,9 +1763,9 @@ class App(tk.Tk):
         start_date = parse_date_input(start_val, year) if start_val else None
         end_date = parse_date_input(end_val, year) if end_val else None
         if not start_date or not end_date:
-            raise ValueError("Baslangic ve bitis tarihi zorunlu.")
+            raise ValueError("Başlangıç ve bitiş tarihi zorunlu.")
         if start_date > end_date:
-            raise ValueError("Baslangic tarihi bitis tarihinden buyuk olamaz.")
+            raise ValueError("Başlangıç tarihi bitiş tarihinden büyük olamaz.")
         return start_date, end_date
 
     def _set_current_week(self, start_date: date, end_date: date, roster_data: Optional[List[List[str]]] = None):
@@ -1831,7 +1839,7 @@ class App(tk.Tk):
 
     def load_excel(self):
         path = filedialog.askopenfilename(
-            title="Excel Dosyasi Sec",
+            title="Excel Dosyası Seç",
             filetypes=EXCEL_FILE_TYPES,
         )
         if not path:
@@ -1841,8 +1849,8 @@ class App(tk.Tk):
             data = load_last_week(path, year)
         except Exception as e:
             messagebox.showerror(
-                "Excel Yukleme Hatasi",
-                _turkish_error_message(e, "Excel dosyasi okunamadi. Beklenen format algilanamadiysa manuel kurulum yapin."),
+                "Excel Yükleme Hatası",
+                _turkish_error_message(e, "Excel dosyası okunamadı. Beklenen format algılanamadıysa manuel kurulum yapın."),
             )
             return
 
@@ -1882,10 +1890,10 @@ class App(tk.Tk):
                 start_date = parse_date_input(start_val, year) if start_val else self.current_start
                 end_date = parse_date_input(end_val, year) if end_val else self.current_end
             except Exception:
-                messagebox.showerror("Dogrulama", "Gecersiz tarih bicimi.")
+                messagebox.showerror("Doğrulama", "Geçersiz tarih biçimi.")
                 return
             if start_date and end_date and start_date > end_date:
-                messagebox.showerror("Dogrulama", "Baslangic tarihi bitis tarihinden buyuk olamaz.")
+                messagebox.showerror("Doğrulama", "Başlangıç tarihi bitiş tarihinden büyük olamaz.")
                 return
 
             self.school_name = school_val
@@ -2035,14 +2043,14 @@ class App(tk.Tk):
         start_text = _format_iso_date(str(weeks[0].get("start_date", "") or ""))
         end_text = _format_iso_date(str(weeks[-1].get("end_date", "") or ""))
         if start_text and end_text:
-            return f"Onizleme: {len(weeks)} hafta ({start_text} - {end_text})"
-        return f"Onizleme: {len(weeks)} hafta"
+            return f"Önizleme: {len(weeks)} hafta ({start_text} - {end_text})"
+        return f"Önizleme: {len(weeks)} hafta"
 
     def generate_range_outputs(self):
         if self.edit_window and self.edit_window.winfo_exists():
             messagebox.showwarning(
                 "Kaydet Gerekli",
-                "Yeni/Hafta Duzenle penceresi acik. Once Kaydet'e basin.",
+                "Yeni/Hafta Düzenle penceresi açık. Önce Kaydet'e basın.",
             )
             self.edit_window.lift()
             self.edit_window.focus_force()
@@ -2054,14 +2062,14 @@ class App(tk.Tk):
         range_start = self.current_start
         range_end = self.current_end
         if range_start > range_end:
-            messagebox.showerror("Dogrulama", "Baslangic tarihi bitis tarihinden buyuk olamaz.")
+            messagebox.showerror("Doğrulama", "Başlangıç tarihi bitiş tarihinden büyük olamaz.")
             return
 
         generated = self._build_weeks_for_output_range(range_start, range_end)
         if not generated:
             messagebox.showwarning(
-                "Aralik Bos",
-                "Secilen aralikta olusturulacak tam hafta bulunamadi (en az 5 gun gerekli).",
+                "Aralık Boş",
+                "Seçilen aralıkta oluşturulacak tam hafta bulunamadı (en az 5 gün gerekli).",
             )
             return
 
@@ -2069,9 +2077,9 @@ class App(tk.Tk):
         self._apply_preview_weeks(generated)
 
         messagebox.showinfo(
-            "Tarih Araliginda Olustur",
-            f"{len(generated)} haftalik onizleme hazirlandi.\n\n"
-            "Cikti almak isterseniz sag panelden manuel olarak disa aktarabilirsiniz.",
+            "Tarih Aralığında Oluştur",
+            f"{len(generated)} haftalık önizleme hazırlandı.\n\n"
+            "Çıktı almak isterseniz sağ panelden manuel olarak dışa aktarabilirsiniz.",
         )
 
     def apply_input_dates(self, start_val: str, end_val: str):
@@ -2080,7 +2088,7 @@ class App(tk.Tk):
         try:
             start_date, end_date = self._parse_range_dates(start_val, end_val)
         except Exception:
-            messagebox.showerror("Dogrulama", "Gecersiz tarih araligi.")
+            messagebox.showerror("Doğrulama", "Geçersiz tarih aralığı.")
             return
         self._set_current_week(start_date, end_date, self.roster)
 
@@ -2090,7 +2098,7 @@ class App(tk.Tk):
         try:
             range_start, range_end = self._parse_range_dates(start_val, end_val)
         except Exception:
-            messagebox.showerror("Dogrulama", "Gecersiz tarih araligi.")
+            messagebox.showerror("Doğrulama", "Geçersiz tarih aralığı.")
             return
 
         next_week = build_next_week(
@@ -2105,8 +2113,8 @@ class App(tk.Tk):
         next_end = date.fromisoformat(next_week["end_date"])
         if next_start < range_start or next_end > range_end:
             messagebox.showwarning(
-                "Aralik Disi",
-                "Sonraki hafta, girdiginiz tarih araliginin disina ciktigi icin olusturulmadi.",
+                "Aralık Dışı",
+                "Sonraki hafta, girdiğiniz tarih aralığının dışına çıktığı için oluşturulmadı.",
             )
             return
         self._set_current_week(next_start, next_end, next_week["roster"])
@@ -2117,21 +2125,21 @@ class App(tk.Tk):
         try:
             start_date, end_date = self._parse_range_dates(start_val, end_val)
         except Exception:
-            messagebox.showerror("Dogrulama", "Gecersiz tarih araligi.")
+            messagebox.showerror("Doğrulama", "Geçersiz tarih aralığı.")
             return
 
         generated = self._build_month_in_range(start_date, end_date, table_count=4)
         real_weeks = [w for w in generated if w["title"]]
         if not real_weeks:
-            messagebox.showwarning("Aralik Bos", "Bu tarih araliginda olusturulacak tam hafta bulunamadi.")
+            messagebox.showwarning("Aralık Boş", "Bu tarih aralığında oluşturulacak tam hafta bulunamadı.")
             return
 
         self._apply_preview_weeks(generated)
 
         blank_count = len([w for w in generated if not w["title"]])
         messagebox.showinfo(
-            "Aylik Olustur",
-            f"Tarih araliginda {len(real_weeks)} hafta olusturuldu. Bos tablo sayisi: {blank_count}.",
+            "Aylık Oluştur",
+            f"Tarih aralığında {len(real_weeks)} hafta oluşturuldu. Boş tablo sayısı: {blank_count}.",
         )
 
     def generate_previous(self):
@@ -2187,9 +2195,9 @@ class App(tk.Tk):
         # Aylik olustur sadece onizleme hazirlar; dosya ciktilari manuel disa aktarimla alinir.
         self._apply_preview_weeks(generated)
         messagebox.showinfo(
-            "Aylik Olustur",
-            "4 haftalik onizleme hazirlandi.\n\n"
-            "Cikti almak isterseniz sag panelden manuel olarak disa aktarabilirsiniz.",
+            "Aylık Oluştur",
+            "4 haftalık önizleme hazırlandı.\n\n"
+            "Çıktı almak isterseniz sağ panelden manuel olarak dışa aktarabilirsiniz.",
         )
 
     def export_pdf(self):
@@ -2199,7 +2207,7 @@ class App(tk.Tk):
             last_end = str(export_weeks[-1].get("end_date", "") or "").strip()
             range_name = f"nobet_{first_start}_{last_end}.pdf" if first_start and last_end else DEFAULT_PDF_FILENAME
             path = filedialog.asksaveasfilename(
-                title="PDF Dosyasini Kaydet",
+                title="PDF Dosyasını Kaydet",
                 defaultextension=".pdf",
                 filetypes=PDF_FILE_TYPES,
                 initialfile=range_name,
@@ -2209,19 +2217,19 @@ class App(tk.Tk):
             try:
                 export_weeks_pdf(path, export_weeks)
             except Exception as e:
-                messagebox.showerror("PDF Disa Aktarma Hatasi", _turkish_error_message(e, "PDF olusturulurken bir hata olustu."))
+                messagebox.showerror("PDF Dışa Aktarma Hatası", _turkish_error_message(e, "PDF oluşturulurken bir hata oluştu."))
                 return
             self._set_last_output("PDF", self._format_preview_summary(export_weeks), path)
-            messagebox.showinfo("PDF Disa Aktar", f"PDF basariyla olusturuldu:\n{path}\n\nHafta sayisi: {len(export_weeks)}")
+            messagebox.showinfo("PDF Dışa Aktar", f"PDF başarıyla oluşturuldu:\n{path}\n\nHafta sayısı: {len(export_weeks)}")
             return
 
         if not export_weeks:
-            messagebox.showwarning("Veri Yok", "Once hafta uretin veya duzenleyin.")
+            messagebox.showwarning("Veri Yok", "Önce hafta üretin veya düzenleyin.")
             return
         week = export_weeks[0]
 
         path = filedialog.asksaveasfilename(
-            title="PDF Dosyasini Kaydet",
+            title="PDF Dosyasını Kaydet",
             defaultextension=".pdf",
             filetypes=PDF_FILE_TYPES,
             initialfile=DEFAULT_PDF_FILENAME,
@@ -2239,11 +2247,11 @@ class App(tk.Tk):
                 str(week.get("principal_name", "") or self.principal_name),
             )
         except Exception as e:
-            messagebox.showerror("PDF Disa Aktarma Hatasi", _turkish_error_message(e, "PDF olusturulurken bir hata olustu."))
+            messagebox.showerror("PDF Dışa Aktarma Hatası", _turkish_error_message(e, "PDF oluşturulurken bir hata oluştu."))
             return
 
         self._set_last_output("PDF", self._format_preview_summary(export_weeks), path)
-        messagebox.showinfo("PDF Disa Aktar", f"PDF basariyla olusturuldu:\n{path}")
+        messagebox.showinfo("PDF Dışa Aktar", f"PDF başarıyla oluşturuldu:\n{path}")
 
     def save_excel_as(self):
         export_weeks = self._export_weeks_snapshot()
@@ -2253,7 +2261,7 @@ class App(tk.Tk):
             last_end = str(export_weeks[-1].get("end_date", "") or "").strip()
             range_name = f"nobet_{first_start}_{last_end}.xlsx" if first_start and last_end else DEFAULT_EXCEL_FILENAME
             path = filedialog.asksaveasfilename(
-                title="Excel Dosyasini Kaydet",
+                title="Excel Dosyasını Kaydet",
                 defaultextension=".xlsx",
                 filetypes=EXCEL_FILE_TYPES,
                 initialdir=initial_dir,
@@ -2267,22 +2275,22 @@ class App(tk.Tk):
                 write_weeks_to_excel(workbook_source, export_weeks, path)
             except Exception as e:
                 messagebox.showerror(
-                    "Excel Kaydetme Hatasi",
-                    _turkish_error_message(e, "Excel dosyasi kaydedilirken bir hata olustu."),
+                    "Excel Kaydetme Hatası",
+                    _turkish_error_message(e, "Excel dosyası kaydedilirken bir hata oluştu."),
                 )
                 return
             self._set_last_output("Excel", self._format_preview_summary(export_weeks), path)
-            messagebox.showinfo("Excel Kaydet", f"Excel basariyla kaydedildi:\n{path}\n\nHafta sayisi: {len(export_weeks)}")
+            messagebox.showinfo("Excel Kaydet", f"Excel başarıyla kaydedildi:\n{path}\n\nHafta sayısı: {len(export_weeks)}")
             return
 
         if not export_weeks:
-            messagebox.showwarning("Veri Yok", "Once hafta uretin veya duzenleyin.")
+            messagebox.showwarning("Veri Yok", "Önce hafta üretin veya düzenleyin.")
             return
         week = export_weeks[0]
 
         initial_dir = str(Path(self.workbook_path).parent) if self.workbook_path else None
         path = filedialog.asksaveasfilename(
-            title="Excel Dosyasini Kaydet",
+            title="Excel Dosyasını Kaydet",
             defaultextension=".xlsx",
             filetypes=EXCEL_FILE_TYPES,
             initialdir=initial_dir,
@@ -2303,13 +2311,13 @@ class App(tk.Tk):
             )
         except Exception as e:
             messagebox.showerror(
-                "Excel Kaydetme Hatasi",
-                _turkish_error_message(e, "Excel dosyasi kaydedilirken bir hata olustu."),
+                "Excel Kaydetme Hatası",
+                _turkish_error_message(e, "Excel dosyası kaydedilirken bir hata oluştu."),
             )
             return
 
         self._set_last_output("Excel", self._format_preview_summary(export_weeks), path)
-        messagebox.showinfo("Excel Kaydet", f"Excel basariyla kaydedildi:\n{path}")
+        messagebox.showinfo("Excel Kaydet", f"Excel başarıyla kaydedildi:\n{path}")
 
 
 def run_app():
