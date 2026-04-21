@@ -93,6 +93,8 @@ SPACE_6 = 24
 MAIN_TREE_LOCATION_WIDTH = 300
 MAIN_TREE_DAY_WIDTH = 155
 MAIN_TABLE_DAY_COUNT = 5
+DEFAULT_MIN_SIZE = (1080, 680)
+PREVIEW_MIN_SIZE = (1220, 760)
 PREVIEW_MIN_VISIBLE_ROWS = 6
 PREVIEW_MAX_VISIBLE_ROWS = 14
 
@@ -1015,8 +1017,6 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Nöbet Çizelgesi")
-        self.geometry("1220x760")
-        self.minsize(1080, 680)
         self.configure(bg=APP_BG)
         self.option_add("*TButton.takeFocus", 0)
         self._font_family = FONT_FAMILY
@@ -1513,13 +1513,16 @@ class App(tk.Tk):
         if visible:
             self.preview_separator.grid()
             self.preview_table_wrap.grid()
+            self.table_card.rowconfigure(2, weight=1)
             self.table_card.grid_configure(sticky="nsew")
             self.shell.rowconfigure(2, weight=1)
         else:
             self.preview_separator.grid_remove()
             self.preview_table_wrap.grid_remove()
+            self.table_card.rowconfigure(2, weight=0)
             self.table_card.grid_configure(sticky="ew")
             self.shell.rowconfigure(2, weight=0)
+        self.minsize(*(PREVIEW_MIN_SIZE if visible and len(self.preview_weeks) > 0 else DEFAULT_MIN_SIZE))
 
     def _on_preview_mousewheel(self, event):
         if hasattr(event, "num") and event.num in (4, 5):
@@ -1678,7 +1681,9 @@ class App(tk.Tk):
             self._preview_scroll_rows = PREVIEW_MIN_VISIBLE_ROWS
             self.preview_title_var.set("Hafta Önizleme")
             self.preview_meta_var.set("Veri bekleniyor")
+            self.minsize(*DEFAULT_MIN_SIZE)
             return
+        self.minsize(*(PREVIEW_MIN_SIZE if self.preview_visible_var.get() else DEFAULT_MIN_SIZE))
         first_week_rows = 1 + len(list(preview_weeks[0].get("locations", []) or []))
         visible_rows = max(PREVIEW_MIN_VISIBLE_ROWS, min(PREVIEW_MAX_VISIBLE_ROWS, first_week_rows))
         self.tree.configure(height=visible_rows)
