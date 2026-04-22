@@ -1,82 +1,92 @@
-# Project AGENTS.md
+# Project Agent Instructions
 
-## Project
+## Authority
 
-Python Tkinter desktop app for teacher duty roster generation.
+This project is migrating the desktop Python duty-roster application to Flutter.
 
-## Architecture
+The agent system is mandatory for all future work:
 
-- `main.py`: entry point only.
-- `ui.py`: mixed UI/controller layer; fragile, edit locally.
-- `roster_logic.py`: core business rules; source of truth.
-- `roster_io.py`: Excel read/write adapter.
-- `pdf_export.py`: PDF export adapter.
-- `app_state.json`: runtime state snapshot.
-- `build/`, `dist/`: generated artifacts; do not edit.
+1. `agents/rules.md` is the source of truth for existing desktop behavior.
+2. `agents/rules_fixes.md` is the source of truth for target improvements and bug fixes.
+3. `agents/architecture.md` defines the Flutter architecture.
+4. `agents/data_model.md` defines canonical models and validation.
+5. `agents/migration.md` defines Python-to-Dart mapping rules.
+6. `agents/flutter_dev.md` defines Flutter implementation rules.
+7. `agents/ui_ux.md` defines mobile UI/UX rules.
 
-## Core Rule
+When instructions conflict:
 
-All business rules must live in or defer to `roster_logic.py`.
+1. User request for the current turn.
+2. `agents/rules_fixes.md`.
+3. `agents/rules.md`.
+4. Other files in `agents/`.
+5. Existing implementation style.
 
-Business rules include:
-- day names
-- title/date parsing and formatting
-- week span and weekly step
-- roster rotation
-- empty-slot preservation
-- duplicate-location eligibility
-- generated week/month/range construction
+Do not ignore `rules.md` to simplify behavior.
+Do not ignore `rules_fixes.md` to preserve known bugs.
 
-## State Model
+## Global Behavior
 
-- Current roster is authoritative for active editing.
-- Generated month/range data is an export candidate only.
-- Preview data is UI buffer only.
-- Persisted state is startup restore only.
-- Preview must not mutate current or generated state.
-- Generated data must not replace current state without explicit confirmation.
-- Export must read from an isolated snapshot.
+- Prefer action over discussion.
+- Be concise.
+- Do not restate the prompt.
+- Do not add motivational filler.
+- Ask only when a wrong assumption can damage work.
+- Never fabricate validation results.
+- Never modify unrelated files.
+- Never refactor unrelated code.
+- Preserve existing names and behavior unless a fix rule requires a change.
+- Do not generate Flutter code unless the user explicitly asks for implementation.
 
-## Workflow
+## Coding Requirements
 
-Operate in controlled steps when requested:
+When asked to implement code:
 
-1. Analyze.
-2. Plan.
-3. Explain intended change.
-4. Wait for approval.
-5. Edit.
-6. Validate.
-7. Report.
+- Always return full working code, not pseudocode.
+- Keep changes complete and runnable.
+- Do not leave TODO placeholders for required behavior.
+- Do not move business logic into UI widgets.
+- Do not simplify roster, Excel, PDF, date, merge, or week-generation logic.
+- Implement target fixes from `agents/rules_fixes.md`.
+- Validate with focused commands and report real results only.
 
-After each approved step:
-- stop
-- report changed files
-- report validation
-- provide commit-ready message if stable
+## Architecture Requirements
 
-## File Priorities
+- Flutter must use clean architecture.
+- UI layer must contain rendering and user interaction only.
+- ViewModel / State layer owns screen state and user actions.
+- Services layer owns business logic and transformations.
+- Models layer owns canonical data shapes and validation.
+- Business logic must be testable without Flutter widgets.
 
-For business behavior:
-1. `roster_logic.py`
-2. tests
-3. callers in `ui.py`, `roster_io.py`, `pdf_export.py`
+- Prefer official Flutter plugins over community packages
+- Always enforce edge-case handling
+- Never assume user input is valid
+- Always implement cancellation-safe logic
+- Always enforce file extension correctness
 
-For UI behavior:
-1. smallest affected method in `ui.py`
-2. state copy/isolation helpers
-3. no broad UI rewrite
+## Migration Requirements
 
-For export behavior:
-1. preserve data contract
-2. preserve Excel/PDF formatting
-3. keep adapter logic out of core unless it is business logic
+- Python behavior must map to Dart one-to-one.
+- Every migrated function must cite its source rule from `agents/rules.md`.
+- Every intentional behavior change must cite its fix rule from `agents/rules_fixes.md`.
+- No logic simplification is allowed.
+- No feature invention is allowed unless the user explicitly requests it.
+- Never produce minimal implementations for IO operations
+- IO code must be production-grade, not demo-level
 
-## Forbidden
+## Output Format
 
-- Editing `build/` or `dist/` manually.
-- Moving business logic into `ui.py`.
-- Letting preview references mutate current state.
-- Rewriting full files unnecessarily.
-- Changing export format without approval.
-- Running expensive full builds unless needed.
+When work is complete:
+
+Done.
+
+Changed:
+- `<file>`: `<short description>`
+
+Validated:
+- `<command/method>`
+- `<result>`
+
+Notes:
+- Use only if necessary.
