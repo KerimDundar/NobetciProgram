@@ -23,6 +23,7 @@ class _EditWeekScreenState extends State<EditWeekScreen> {
   bool _allowPop = false;
   String? _validationError;
   String? _statusMessage;
+  int _selectedGridDayIndex = 0;
 
   @override
   void initState() {
@@ -143,19 +144,20 @@ class _EditWeekScreenState extends State<EditWeekScreen> {
                 const _EmptyDraftHint(),
                 const SizedBox(height: 12),
               ],
-              for (var index = 0; index < _rows.length; index++) ...[
-                _EditableLocationCard(
-                  key: ValueKey(_rows[index]),
-                  index: index,
-                  row: _rows[index],
-                  onDelete: _rows.length == 1 ? null : () => _deleteRow(index),
-                ),
-                const SizedBox(height: 12),
-              ],
-              OutlinedButton.icon(
-                onPressed: _addRow,
-                icon: const Icon(Icons.add),
-                label: const Text('Görev Yeri Ekle'),
+              _EditDayGridBinding(
+                selectedDayIndex: _selectedGridDayIndex,
+                rows: _rows,
+                onSelectDay: (dayIndex) {
+                  setState(() {
+                    _selectedGridDayIndex = dayIndex;
+                  });
+                },
+                onUpdateTeacher: _updateGridTeacher,
+                onUpdateLocation: _updateGridLocation,
+                onAddRow: _addRow,
+                onDeleteRow: _rows.length == 1 ? null : _deleteRow,
+                duplicateRowIndexes: _duplicateDraftRows(),
+                showValidationHints: _validationError != null,
               ),
             ],
           ),
@@ -248,6 +250,20 @@ class _EditWeekScreenState extends State<EditWeekScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  void _updateGridTeacher(int rowIndex, int dayIndex, String value) {
+    final controller = _rows[rowIndex].teacherControllers[dayIndex];
+    if (controller.text != value) {
+      controller.text = value;
+    }
+  }
+
+  void _updateGridLocation(int rowIndex, String value) {
+    final controller = _rows[rowIndex].locationController;
+    if (controller.text != value) {
+      controller.text = value;
+    }
+  }
+
   void _save() {
     final error = widget.state.saveWeekDraft(
       startDate: _startDate,
@@ -328,6 +344,28 @@ class _EditWeekScreenState extends State<EditWeekScreen> {
       });
       return !hasLocation && !hasTeacher;
     });
+  }
+
+  Set<int> _duplicateDraftRows() {
+    final seen = <String, int>{};
+    final duplicates = <int>{};
+
+    for (var index = 0; index < _rows.length; index++) {
+      final key = _rows[index].locationController.text.trim();
+      if (key.isEmpty) {
+        continue;
+      }
+      final firstIndex = seen[key];
+      if (firstIndex == null) {
+        seen[key] = index;
+      } else {
+        duplicates
+          ..add(firstIndex)
+          ..add(index);
+      }
+    }
+
+    return duplicates;
   }
 
   Future<bool> _confirmDiscardChanges() async {
@@ -458,7 +496,7 @@ class _EmptyDraftHint extends StatelessWidget {
             const SizedBox(width: 8),
             const Expanded(
               child: Text(
-                'Henüz görev yeri yok. İlk kartı doldurun veya yeni görev yeri ekleyin.',
+                'Henüz görev yeri yok. Günlük düzenleme ile ilk görev yerini ekleyin.',
               ),
             ),
           ],
@@ -567,54 +605,372 @@ class _RotationActions extends StatelessWidget {
   }
 }
 
-class _EditableLocationCard extends StatelessWidget {
-  const _EditableLocationCard({
-    super.key,
-    required this.index,
-    required this.row,
-    required this.onDelete,
+class _EditDayGridBinding extends StatelessWidget {
+  const _EditDayGridBinding({
+    required this.selectedDayIndex,
+    required this.rows,
+    required this.onSelectDay,
+    required this.onUpdateTeacher,
+    required this.onUpdateLocation,
+    required this.onAddRow,
+    required this.onDeleteRow,
+    required this.duplicateRowIndexes,
+    required this.showValidationHints,
   });
 
-  final int index;
-  final _RosterRowDraft row;
-  final VoidCallback? onDelete;
+  final int selectedDayIndex;
+  final List<_RosterRowDraft> rows;
+  final ValueChanged<int> onSelectDay;
+  final void Function(int rowIndex, int dayIndex, String value) onUpdateTeacher;
+  final void Function(int rowIndex, String value) onUpdateLocation;
+  final VoidCallback onAddRow;
+  final void Function(int rowIndex)? onDeleteRow;
+  final Set<int> duplicateRowIndexes;
+  final bool showValidationHints;
 
   @override
   Widget build(BuildContext context) {
     return Card(
+      key: const ValueKey('edit-grid-binding'),
       child: Padding(
         padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Günlük Düzenleme',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<int>(
+                key: const ValueKey('edit-grid-day-selector'),
+                segments: [
+                  for (var day = 0; day < rosterDayCount; day++)
+                    ButtonSegment<int>(
+                      value: day,
+                      label: Text(_shortDayName(rosterDayNames[day])),
+                    ),
+                ],
+                selected: {selectedDayIndex},
+                onSelectionChanged: (values) => onSelectDay(values.single),
+              ),
+            ),
+            const SizedBox(height: 12),
+            _EditSelectedDayBanner(dayName: rosterDayNames[selectedDayIndex]),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                key: const ValueKey('edit-grid-add-location'),
+                onPressed: onAddRow,
+                icon: const Icon(Icons.add),
+                label: const Text('Görev Yeri Ekle'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (rows.isEmpty)
+              const Text('Bu hafta için görev yeri yok.')
+            else
+              for (var rowIndex = 0; rowIndex < rows.length; rowIndex++)
+                _EditDayGridRow(
+                  rowIndex: rowIndex,
+                  dayIndex: selectedDayIndex,
+                  row: rows[rowIndex],
+                  onUpdateTeacher: onUpdateTeacher,
+                  onUpdateLocation: onUpdateLocation,
+                  onDeleteRow: onDeleteRow,
+                  isDuplicateLocation: duplicateRowIndexes.contains(rowIndex),
+                  showValidationError:
+                      showValidationHints && _rowNeedsLocation(rows[rowIndex]),
+                ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  bool _rowNeedsLocation(_RosterRowDraft row) {
+    final hasLocation = row.locationController.text.trim().isNotEmpty;
+    final hasTeacher = row.teacherControllers.any((controller) {
+      return controller.text.trim().isNotEmpty;
+    });
+    return !hasLocation && hasTeacher;
+  }
+}
+
+class _EditDayGridRow extends StatelessWidget {
+  const _EditDayGridRow({
+    required this.rowIndex,
+    required this.dayIndex,
+    required this.row,
+    required this.onUpdateTeacher,
+    required this.onUpdateLocation,
+    required this.onDeleteRow,
+    required this.isDuplicateLocation,
+    required this.showValidationError,
+  });
+
+  final int rowIndex;
+  final int dayIndex;
+  final _RosterRowDraft row;
+  final void Function(int rowIndex, int dayIndex, String value) onUpdateTeacher;
+  final void Function(int rowIndex, String value) onUpdateLocation;
+  final void Function(int rowIndex)? onDeleteRow;
+  final bool isDuplicateLocation;
+  final bool showValidationError;
+
+  @override
+  Widget build(BuildContext context) {
+    final location = row.locationController.text.trim().isEmpty
+        ? 'Görev yeri ${rowIndex + 1}'
+        : row.locationController.text.trim();
+    final teacher = row.teacherControllers[dayIndex].text.trim();
+    final isFilled = teacher.isNotEmpty;
+
+    return ConstrainedBox(
+      key: ValueKey('edit-grid-cell-$dayIndex-$rowIndex'),
+      constraints: const BoxConstraints(minHeight: 72),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
         child: Column(
           children: [
             Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: row.locationController,
-                    decoration: InputDecoration(
-                      labelText: 'Görev Yeri ${index + 1}',
-                    ),
-                    textInputAction: TextInputAction.next,
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(
+                        location,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      _EditGridStatusBadge(
+                        label: isFilled ? 'Dolu' : 'Boş',
+                        isFilled: isFilled,
+                      ),
+                      if (isDuplicateLocation) const _EditDuplicateBadge(),
+                      Text(
+                        'Satır ${rowIndex + 1}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
                   ),
                 ),
                 IconButton(
+                  key: ValueKey('edit-grid-edit-location-$rowIndex'),
+                  tooltip: 'Görev yerini düzenle',
+                  onPressed: () => _openLocationEditor(context),
+                  icon: const Icon(Icons.edit_outlined),
+                ),
+                IconButton(
+                  key: ValueKey('edit-grid-delete-location-$rowIndex'),
                   tooltip: 'Sil',
-                  onPressed: onDelete,
+                  onPressed: onDeleteRow == null
+                      ? null
+                      : () => onDeleteRow!(rowIndex),
                   icon: const Icon(Icons.delete_outline),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            for (var day = 0; day < rosterDayCount; day++) ...[
-              TextField(
-                controller: row.teacherControllers[day],
-                decoration: InputDecoration(labelText: rosterDayNames[day]),
-                textInputAction: day == rosterDayCount - 1
-                    ? TextInputAction.done
-                    : TextInputAction.next,
-              ),
-              if (day < rosterDayCount - 1) const SizedBox(height: 8),
+            TextField(
+              key: ValueKey('edit-grid-teacher-input-$dayIndex-$rowIndex'),
+              controller: row.teacherControllers[dayIndex],
+              decoration: InputDecoration(labelText: rosterDayNames[dayIndex]),
+              textInputAction: TextInputAction.next,
+              onChanged: (value) => onUpdateTeacher(rowIndex, dayIndex, value),
+            ),
+            if (showValidationError) ...[
+              const SizedBox(height: 6),
+              _GridRowError(rowIndex: rowIndex),
             ],
+            const Divider(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openLocationEditor(BuildContext context) async {
+    final value = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return _GridEditSheet(
+          fieldKey: const ValueKey('edit-grid-location-field'),
+          initialValue: row.locationController.text,
+          labelText: 'Görev Yeri',
+        );
+      },
+    );
+    if (value != null) {
+      onUpdateLocation(rowIndex, value);
+    }
+  }
+}
+
+class _EditSelectedDayBanner extends StatelessWidget {
+  const _EditSelectedDayBanner({required this.dayName});
+
+  final String dayName;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Container(
+      key: const ValueKey('edit-grid-selected-day-label'),
+      width: double.infinity,
+      constraints: const BoxConstraints(minHeight: 48),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: colors.primaryContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Icon(Icons.edit_calendar, color: colors.onPrimaryContainer, size: 18),
+          Text(
+            'Seçili gün: $dayName',
+            style: TextStyle(
+              color: colors.onPrimaryContainer,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EditGridStatusBadge extends StatelessWidget {
+  const _EditGridStatusBadge({required this.label, required this.isFilled});
+
+  final String label;
+  final bool isFilled;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Chip(
+      avatar: Icon(
+        isFilled ? Icons.check_circle_outline : Icons.radio_button_unchecked,
+        size: 16,
+      ),
+      visualDensity: VisualDensity.compact,
+      backgroundColor: isFilled
+          ? colors.secondaryContainer
+          : colors.surfaceContainerHighest,
+      label: Text(label),
+    );
+  }
+}
+
+class _EditDuplicateBadge extends StatelessWidget {
+  const _EditDuplicateBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Chip(
+      avatar: Icon(Icons.layers_outlined, size: 16),
+      visualDensity: VisualDensity.compact,
+      label: Text('Tekrar'),
+    );
+  }
+}
+
+class _GridRowError extends StatelessWidget {
+  const _GridRowError({required this.rowIndex});
+
+  final int rowIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Semantics(
+      liveRegion: true,
+      child: Row(
+        key: ValueKey('edit-grid-row-error-$rowIndex'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.error_outline, size: 18, color: colors.error),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'Görev yeri gerekli',
+              style: TextStyle(color: colors.error),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GridEditSheet extends StatefulWidget {
+  const _GridEditSheet({
+    required this.fieldKey,
+    required this.initialValue,
+    required this.labelText,
+  });
+
+  final Key fieldKey;
+  final String initialValue;
+  final String labelText;
+
+  @override
+  State<_GridEditSheet> createState() => _GridEditSheetState();
+}
+
+class _GridEditSheetState extends State<_GridEditSheet> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              key: widget.fieldKey,
+              controller: _controller,
+              autofocus: true,
+              decoration: InputDecoration(labelText: widget.labelText),
+              textInputAction: TextInputAction.done,
+              onSubmitted: (value) => Navigator.of(context).pop(value),
+            ),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(_controller.text),
+              child: const Text('Uygula'),
+            ),
           ],
         ),
       ),
@@ -685,4 +1041,13 @@ String _formatDate(DateTime date) {
   final day = date.day.toString().padLeft(2, '0');
   final month = date.month.toString().padLeft(2, '0');
   return '$day.$month.${date.year}';
+}
+
+String _shortDayName(String value) {
+  return switch (value) {
+    'PAZARTESİ' => 'PZT',
+    'ÇARŞAMBA' => 'ÇAR',
+    'PERŞEMBE' => 'PER',
+    _ => value.length <= 3 ? value : value.substring(0, 3),
+  };
 }

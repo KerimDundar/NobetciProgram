@@ -15,6 +15,7 @@ import 'package:nobetci_program_mobile/services/export_table_service.dart';
 import 'package:nobetci_program_mobile/services/pdf_export_service.dart';
 import 'package:nobetci_program_mobile/services/roster_service.dart';
 import 'package:nobetci_program_mobile/services/text_normalizer.dart';
+import 'package:nobetci_program_mobile/services/week_grid_projection_service.dart';
 import 'package:nobetci_program_mobile/services/week_service.dart';
 import 'package:nobetci_program_mobile/state/roster_state.dart';
 
@@ -373,6 +374,98 @@ void main() {
       expect(next.rows.map((row) => row.teachersByDay.first).toList(), [
         'B',
         'A',
+      ]);
+    });
+  });
+
+  group('WeekGridProjectionService', () {
+    const service = WeekGridProjectionService();
+    final startDate = DateTime(2026, 2, 2);
+    final endDate = DateTime(2026, 2, 6);
+
+    test('projects empty week into five empty day buckets', () {
+      final projection = service.project(
+        Week(
+          title: 'T1',
+          startDate: startDate,
+          endDate: endDate,
+          rows: const [],
+        ),
+      );
+
+      expect(projection.days, hasLength(rosterDayCount));
+      expect(projection.dayAt(0).dayName, 'PAZARTESİ');
+      expect(projection.dayAt(0).cells, isEmpty);
+      expect(projection.dayAt(4).dayName, 'CUMA');
+      expect(projection.dayAt(4).cells, isEmpty);
+    });
+
+    test('preserves row index, day index, location, and teacher values', () {
+      final projection = service.project(
+        Week(
+          title: 'T1',
+          startDate: startDate,
+          endDate: endDate,
+          rows: [
+            RosterRow(location: 'Bahçe', teachersByDay: ['Ali', 'Ayşe']),
+            RosterRow(location: 'Koridor', teachersByDay: ['', 'Veli']),
+          ],
+        ),
+      );
+
+      expect(projection.dayAt(0).cells, hasLength(2));
+      expect(projection.dayAt(0).cells[0].rowIndex, 0);
+      expect(projection.dayAt(0).cells[0].dayIndex, 0);
+      expect(projection.dayAt(0).cells[0].location, 'Bahçe');
+      expect(projection.dayAt(0).cells[0].teacher, 'Ali');
+      expect(projection.dayAt(0).cells[1].location, 'Koridor');
+      expect(projection.dayAt(0).cells[1].teacher, '');
+      expect(projection.dayAt(1).cells[0].teacher, 'Ayşe');
+      expect(projection.dayAt(1).cells[1].teacher, 'Veli');
+    });
+
+    test('marks empty teacher cells without changing logical rows', () {
+      final week = Week(
+        title: 'T1',
+        startDate: startDate,
+        endDate: endDate,
+        rows: [
+          RosterRow(location: 'Bahçe', teachersByDay: ['', 'Ayşe']),
+        ],
+      );
+      final projection = service.project(week);
+
+      expect(projection.dayAt(0).cells.single.isEmpty, isTrue);
+      expect(projection.dayAt(1).cells.single.isEmpty, isFalse);
+      expect(week.rows.single.teachersByDay, ['', 'Ayşe', '', '', '']);
+    });
+
+    test('marks duplicate locations while preserving each row identity', () {
+      final projection = service.project(
+        Week(
+          title: 'T1',
+          startDate: startDate,
+          endDate: endDate,
+          rows: [
+            RosterRow(location: 'Bahçe', teachersByDay: ['Ali']),
+            RosterRow(location: 'Koridor', teachersByDay: ['Veli']),
+            RosterRow(location: 'Bahçe', teachersByDay: ['Can']),
+          ],
+        ),
+      );
+
+      final monday = projection.dayAt(0).cells;
+      expect(monday.map((cell) => cell.rowIndex), [0, 1, 2]);
+      expect(monday.map((cell) => cell.location), [
+        'Bahçe',
+        'Koridor',
+        'Bahçe',
+      ]);
+      expect(monday.map((cell) => cell.teacher), ['Ali', 'Veli', 'Can']);
+      expect(monday.map((cell) => cell.isDuplicateLocation), [
+        true,
+        false,
+        true,
       ]);
     });
   });
