@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter analyze *)",
+      "Bash(where flutter *)",
+      "Bash(puro flutter *)",
+      "Bash(adb -s emulator-5554 shell screencap -p /sdcard/screen1.png)",
+      "Bash(adb -s emulator-5554 pull /sdcard/screen1.png /tmp/screen1.png)",
+      "Bash(adb -s emulator-5554 exec-out screencap -p)",
+      "Read(//tmp/**)",
+      "Bash(adb -s emulator-5554 shell wm size)",
+      "Bash(adb -s emulator-5554 shell input tap 641 296)",
+      "Bash(adb -s emulator-5554 shell uiautomator dump /sdcard/ui.xml)",
+      "Bash(adb -s emulator-5554 pull /sdcard/ui.xml /tmp/ui.xml)",
+      "Bash(adb -s emulator-5554 shell \"uiautomator dump /data/local/tmp/ui.xml\")",
+      "Bash(adb -s emulator-5554 pull /data/local/tmp/ui.xml \"d:/Git/NobetciProgram/mobile_app/ui.xml\")",
+      "PowerShell(adb -s emulator-5554 pull /data/local/tmp/ui.xml \"d:\\\\Git\\\\NobetciProgram\\\\mobile_app\\\\ui.xml\")",
+      "Bash(adb -s emulator-5554 shell input tap 639 210)",
+      "Bash(adb -s emulator-5554 shell input tap 966 2234)",
+      "Bash(adb -s emulator-5554 shell input tap 540 1914)",
+      "Bash(adb -s emulator-5554 shell input text \"Test_Pasif\")",
+      "Bash(adb -s emulator-5554 shell input keyevent 66)",
+      "Bash(adb -s emulator-5554 shell input tap 957 2076)",
+      "Bash(adb -s emulator-5554 shell input tap 540 1957)",
+      "Bash(adb -s emulator-5554 shell input keyevent 111)",
+      "Bash(adb -s emulator-5554 shell input text \"TestPasif\")",
+      "Bash(adb -s emulator-5554 shell \"uiautomator dump /data/local/tmp/ui2.xml\")",
+      "PowerShell(adb -s emulator-5554 pull /data/local/tmp/ui2.xml \"d:\\\\Git\\\\NobetciProgram\\\\mobile_app\\\\ui2.xml\")",
+      "Bash(adb -s emulator-5554 shell input tap 540 2232)"
+    ]
+  }
+}

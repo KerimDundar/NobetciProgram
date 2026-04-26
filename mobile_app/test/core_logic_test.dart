@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 import 'dart:io';
 import 'dart:typed_data';
@@ -7,13 +8,16 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nobetci_program_mobile/models/roster_row.dart';
 import 'package:nobetci_program_mobile/models/week.dart';
+import 'package:nobetci_program_mobile/services/cell_teacher_codec.dart';
 import 'package:nobetci_program_mobile/services/duplicate_location_service.dart';
 import 'package:nobetci_program_mobile/services/excel_export_service.dart';
 import 'package:nobetci_program_mobile/services/export_file_service.dart';
 import 'package:nobetci_program_mobile/services/export_snapshot_service.dart';
 import 'package:nobetci_program_mobile/services/export_table_service.dart';
+import 'package:nobetci_program_mobile/services/grid_cell_status_service.dart';
 import 'package:nobetci_program_mobile/services/pdf_export_service.dart';
 import 'package:nobetci_program_mobile/services/roster_service.dart';
+import 'package:nobetci_program_mobile/services/teacher_assignment_lookup_service.dart';
 import 'package:nobetci_program_mobile/services/text_normalizer.dart';
 import 'package:nobetci_program_mobile/services/week_grid_projection_service.dart';
 import 'package:nobetci_program_mobile/services/week_service.dart';
@@ -56,6 +60,149 @@ void main() {
 
     test('displayClean collapses whitespace without changing case', () {
       expect(normalizer.displayClean('  Ali\n  Veli  '), 'Ali Veli');
+    });
+  });
+
+  group('CellTeacherCodec', () {
+    const codec = CellTeacherCodec();
+
+    test('parse handles empty cell', () {
+      expect(codec.parse(''), isEmpty);
+      expect(codec.parse('   '), isEmpty);
+      expect(codec.parse('\n \n'), isEmpty);
+    });
+
+    test('parse handles single teacher cell', () {
+      expect(codec.parse('  Ali Yilmaz  '), ['Ali Yilmaz']);
+    });
+
+    test('parse handles multi teacher cell', () {
+      expect(codec.parse('Ali Yilmaz\nAyse Demir\nCan Aydin'), [
+        'Ali Yilmaz',
+        'Ayse Demir',
+        'Can Aydin',
+      ]);
+    });
+
+    test('addTeacher does not add canonical duplicates', () {
+      final cell = codec.addTeacher('Ali Yilmaz', ' ali   yilmaz ');
+      expect(cell, 'Ali Yilmaz');
+      expect(codec.parse(cell), ['Ali Yilmaz']);
+    });
+
+    test('removeTeacher removes teacher safely', () {
+      final cell = codec.removeTeacher('Ali Yilmaz\nAyse Demir', 'ali yilmaz');
+      expect(cell, 'Ayse Demir');
+      expect(codec.parse(cell), ['Ayse Demir']);
+    });
+
+    test('Turkish characters are preserved', () {
+      final cell = codec.serialize(['Şule Çağrı', 'İpek Öztürk']);
+      expect(cell, 'Şule Çağrı\nİpek Öztürk');
+      expect(codec.parse(cell), ['Şule Çağrı', 'İpek Öztürk']);
+      expect(codec.containsTeacher(cell, 'sule cagrı'), isFalse);
+      expect(codec.containsTeacher(cell, 'Şule Çağrı'), isTrue);
+    });
+
+    test('newline round-trip remains stable and normalized', () {
+      final source = ' Ali Yilmaz \r\n\nAyse Demir\nAli   Yilmaz ';
+      final parsed = codec.parse(source);
+      final serialized = codec.serialize(parsed);
+
+      expect(parsed, ['Ali Yilmaz', 'Ayse Demir']);
+      expect(serialized, 'Ali Yilmaz\nAyse Demir');
+      expect(codec.parse(serialized), ['Ali Yilmaz', 'Ayse Demir']);
+    });
+  });
+
+  group('TeacherAssignmentLookupService', () {
+    const service = TeacherAssignmentLookupService();
+
+    test('lookup returns empty when teacher has no assignment', () {
+      final week = Week(
+        title: 'T1',
+        startDate: DateTime(2026, 2, 2),
+        endDate: DateTime(2026, 2, 6),
+        rows: [
+          RosterRow(location: 'Bahce', teachersByDay: ['Ali Yilmaz']),
+        ],
+      );
+
+      final result = service.assignmentsFromWeek(
+        week: week,
+        teacherName: 'Ayse Demir',
+      );
+
+      expect(result, isEmpty);
+    });
+
+    test('lookup returns single assignment for teacher', () {
+      final week = Week(
+        title: 'T1',
+        startDate: DateTime(2026, 2, 2),
+        endDate: DateTime(2026, 2, 6),
+        rows: [
+          RosterRow(location: 'Bahce', teachersByDay: ['Ali Yilmaz']),
+          RosterRow(location: 'Koridor', teachersByDay: ['']),
+        ],
+      );
+
+      final result = service.assignmentsFromWeek(
+        week: week,
+        teacherName: 'Ali Yilmaz',
+      );
+
+      expect(result, hasLength(1));
+      expect(result.first.dayIndex, 0);
+      expect(result.first.location, 'Bahce');
+    });
+
+    test('lookup returns multiple locations on same day', () {
+      final week = Week(
+        title: 'T1',
+        startDate: DateTime(2026, 2, 2),
+        endDate: DateTime(2026, 2, 6),
+        rows: [
+          RosterRow(location: 'Bahce', teachersByDay: ['Ali Yilmaz']),
+          RosterRow(location: 'Koridor', teachersByDay: ['Ali Yilmaz']),
+          RosterRow(location: 'Kantin', teachersByDay: ['']),
+        ],
+      );
+
+      final result = service.assignmentsFromWeek(
+        week: week,
+        teacherName: 'Ali Yilmaz',
+        dayIndex: 0,
+      );
+
+      expect(result, hasLength(2));
+      expect(result.map((item) => item.location).toList(), [
+        'Bahce',
+        'Koridor',
+      ]);
+    });
+
+    test('lookup finds target teacher in multi-teacher cell', () {
+      final week = Week(
+        title: 'T1',
+        startDate: DateTime(2026, 2, 2),
+        endDate: DateTime(2026, 2, 6),
+        rows: [
+          RosterRow(
+            location: 'Bahce',
+            teachersByDay: [r'Ali Yilmaz\nAyse Demir'],
+          ),
+        ],
+      );
+
+      final result = service.assignmentsFromWeek(
+        week: week,
+        teacherName: 'Ayse Demir',
+      );
+
+      expect(result, hasLength(1));
+      expect(result.first.dayIndex, 0);
+      expect(result.first.location, 'Bahce');
     });
   });
 
@@ -259,6 +406,57 @@ void main() {
         ['I', 'J', '', 'K', 'L'],
       ]);
     });
+
+    test('rotateDayForward rotates only selected day column', () {
+      final rows = [
+        RosterRow(location: 'R1', teachersByDay: ['A', 'B', '', 'D', 'E']),
+        RosterRow(location: 'R2', teachersByDay: ['', 'C', 'X', '', 'F']),
+        RosterRow(location: 'R3', teachersByDay: ['G', '', 'Y', 'H', '']),
+        RosterRow(location: 'R4', teachersByDay: ['I', 'J', '', 'K', 'L']),
+      ];
+
+      final rotated = service.rotateDayForward(rows, 0);
+
+      expect(rotated.map((row) => row.teachersByDay).toList(), [
+        ['G', 'B', '', 'D', 'E'],
+        ['', 'C', 'X', '', 'F'],
+        ['I', '', 'Y', 'H', ''],
+        ['A', 'J', '', 'K', 'L'],
+      ]);
+    });
+
+    test('rotateDayBackward rotates only selected day column', () {
+      final rows = [
+        RosterRow(location: 'R1', teachersByDay: ['A', 'B', '', 'D', 'E']),
+        RosterRow(location: 'R2', teachersByDay: ['', 'C', 'X', '', 'F']),
+        RosterRow(location: 'R3', teachersByDay: ['G', '', 'Y', 'H', '']),
+        RosterRow(location: 'R4', teachersByDay: ['I', 'J', '', 'K', 'L']),
+      ];
+
+      final rotated = service.rotateDayBackward(rows, 4);
+
+      expect(rotated.map((row) => row.teachersByDay).toList(), [
+        ['A', 'B', '', 'D', 'L'],
+        ['', 'C', 'X', '', 'E'],
+        ['G', '', 'Y', 'H', ''],
+        ['I', 'J', '', 'K', 'F'],
+      ]);
+    });
+
+    test('rotateDayForward and rotateDayBackward validate day index', () {
+      final rows = [
+        RosterRow(location: 'R1', teachersByDay: ['A', '', '', '', '']),
+      ];
+
+      expect(
+        () => service.rotateDayForward(rows, -1),
+        throwsA(isA<FormatException>()),
+      );
+      expect(
+        () => service.rotateDayBackward(rows, rosterDayCount),
+        throwsA(isA<FormatException>()),
+      );
+    });
   });
 
   group('WeekService', () {
@@ -418,10 +616,14 @@ void main() {
       expect(projection.dayAt(0).cells[0].dayIndex, 0);
       expect(projection.dayAt(0).cells[0].location, 'Bahçe');
       expect(projection.dayAt(0).cells[0].teacher, 'Ali');
+      expect(projection.dayAt(0).cells[0].teachers, ['Ali']);
       expect(projection.dayAt(0).cells[1].location, 'Koridor');
       expect(projection.dayAt(0).cells[1].teacher, '');
+      expect(projection.dayAt(0).cells[1].teachers, isEmpty);
       expect(projection.dayAt(1).cells[0].teacher, 'Ayşe');
+      expect(projection.dayAt(1).cells[0].teachers, ['Ayşe']);
       expect(projection.dayAt(1).cells[1].teacher, 'Veli');
+      expect(projection.dayAt(1).cells[1].teachers, ['Veli']);
     });
 
     test('marks empty teacher cells without changing logical rows', () {
@@ -467,6 +669,98 @@ void main() {
         false,
         true,
       ]);
+    });
+
+    test(
+      'preserves multi teacher cells as list while keeping teacher string',
+      () {
+        final projection = service.project(
+          Week(
+            title: 'T1',
+            startDate: startDate,
+            endDate: endDate,
+            rows: [
+              RosterRow(
+                location: 'Bahçe',
+                teachersByDay: [r'Ali Yilmaz\nAyse Demir'],
+              ),
+            ],
+          ),
+        );
+
+        final mondayCell = projection.dayAt(0).cells.single;
+        expect(mondayCell.teachers, ['Ali Yilmaz', 'Ayse Demir']);
+        expect(mondayCell.teacher, 'Ali Yilmaz\nAyse Demir');
+        expect(mondayCell.isEmpty, isFalse);
+      },
+    );
+  });
+
+  group('GridCellStatusService', () {
+    const projectionService = WeekGridProjectionService();
+    const statusService = GridCellStatusService();
+    final startDate = DateTime(2026, 2, 2);
+    final endDate = DateTime(2026, 2, 6);
+
+    test('returns empty when teacher list is empty', () {
+      final projection = projectionService.project(
+        Week(
+          title: 'T1',
+          startDate: startDate,
+          endDate: endDate,
+          rows: [
+            RosterRow(location: 'Bahçe', teachersByDay: ['']),
+          ],
+        ),
+      );
+      final monday = projection.dayAt(0);
+
+      expect(
+        statusService.statusForCell(day: monday, cell: monday.cells.single),
+        GridCellStatus.empty,
+      );
+    });
+
+    test('returns filled when multi teacher list exists', () {
+      final projection = projectionService.project(
+        Week(
+          title: 'T1',
+          startDate: startDate,
+          endDate: endDate,
+          rows: [
+            RosterRow(
+              location: 'Bahçe',
+              teachersByDay: [r'Ali Yilmaz\nAyse Demir'],
+            ),
+          ],
+        ),
+      );
+      final monday = projection.dayAt(0);
+
+      expect(
+        statusService.statusForCell(day: monday, cell: monday.cells.single),
+        GridCellStatus.filled,
+      );
+    });
+
+    test('same teacher on same day across locations does not conflict', () {
+      final projection = projectionService.project(
+        Week(
+          title: 'T1',
+          startDate: startDate,
+          endDate: endDate,
+          rows: [
+            RosterRow(location: 'Bahçe', teachersByDay: ['Ali Yilmaz']),
+            RosterRow(location: 'Koridor', teachersByDay: ['Ali Yilmaz']),
+          ],
+        ),
+      );
+      final monday = projection.dayAt(0);
+      final statuses = monday.cells
+          .map((cell) => statusService.statusForCell(day: monday, cell: cell))
+          .toList(growable: false);
+
+      expect(statuses, [GridCellStatus.filled, GridCellStatus.filled]);
     });
   });
 
@@ -558,6 +852,26 @@ void main() {
       ]);
     });
 
+    test('snapshot keeps encoded multi teacher cell string unchanged', () {
+      const service = ExportSnapshotService();
+      const encodedCell = r'Ali Yilmaz\nAyse Demir';
+      final snapshot = service.fromCurrentWeek(
+        Week(
+          title: 'T1',
+          startDate: startDate,
+          endDate: endDate,
+          rows: [
+            RosterRow(location: 'Bah\u00E7e', teachersByDay: [encodedCell]),
+          ],
+        ),
+      );
+
+      expect(
+        snapshot.weeks.single.rows.single.teachersByDay.first,
+        encodedCell,
+      );
+    });
+
     test('shared export table uses desktop duplicate pair merge rules', () {
       const service = ExportTableService();
       const snapshotService = ExportSnapshotService();
@@ -601,6 +915,80 @@ void main() {
       expect(_hasSpan(table.spans, 0, 0, 1), isTrue);
       expect(_hasSpan(table.spans, 0, 0, 2), isFalse);
       expect(table.spans.where((span) => span.column == 4), isEmpty);
+    });
+
+    test(
+      'export table decodes multi teacher token and preserves Turkish line order',
+      () {
+        const service = ExportTableService();
+        const snapshotService = ExportSnapshotService();
+        const firstTeacher = '\u00C7a\u011Fr\u0131 \u00DCnl\u00FC';
+        const secondTeacher = '\u015Eule \u00D6zt\u00FCrk';
+        final encodedCell = '$firstTeacher\\n$secondTeacher';
+        final snapshot = snapshotService.fromCurrentWeek(
+          Week(
+            title: 'T1',
+            startDate: startDate,
+            endDate: endDate,
+            rows: [
+              RosterRow(location: 'Bah\u00E7e', teachersByDay: [encodedCell]),
+            ],
+          ),
+        );
+
+        final table = service.buildWeekTable(snapshot.weeks.single);
+
+        expect(table.bodyRows.single[1], '$firstTeacher\n$secondTeacher');
+      },
+    );
+
+    test(
+      'duplicate merge behavior stays consistent with multi teacher cells',
+      () {
+        const service = ExportTableService();
+        const snapshotService = ExportSnapshotService();
+        final snapshot = snapshotService.fromCurrentWeek(
+          Week(
+            title: 'T1',
+            startDate: startDate,
+            endDate: endDate,
+            rows: [
+              RosterRow(location: 'Kat-1', teachersByDay: [r'Ali\nAyse']),
+              RosterRow(location: 'kat 1', teachersByDay: [r'ali\nayse']),
+              RosterRow(location: 'KAT 1', teachersByDay: ['Veli']),
+            ],
+          ),
+        );
+
+        final table = service.buildWeekTable(snapshot.weeks.single);
+
+        expect(_hasSpan(table.spans, 0, 0, 1), isTrue);
+        expect(_hasSpan(table.spans, 0, 0, 2), isFalse);
+        expect(_hasSpan(table.spans, 1, 0, 1), isTrue);
+        expect(table.bodyRows[0][1], 'Ali\nAyse');
+        expect(table.bodyRows[1][1], '');
+        expect(table.bodyRows[2][1], 'Veli');
+      },
+    );
+
+    test('single teacher export behavior remains unchanged', () {
+      const service = ExportTableService();
+      const snapshotService = ExportSnapshotService();
+      final snapshot = snapshotService.fromCurrentWeek(
+        Week(
+          title: 'T1',
+          startDate: startDate,
+          endDate: endDate,
+          rows: [
+            RosterRow(location: 'Kat-1', teachersByDay: ['Ali']),
+          ],
+        ),
+      );
+
+      final table = service.buildWeekTable(snapshot.weeks.single);
+
+      expect(table.bodyRows.single[1], 'Ali');
+      expect(table.spans, isEmpty);
     });
 
     test(
@@ -766,6 +1154,61 @@ void main() {
       expect(_hasPdfBodyCell(fourCells, 0, 3), isFalse);
     });
 
+    test('PDF footer renders principal name and title on separate lines', () {
+      const pdfService = PdfExportService();
+
+      expect(pdfService.debugPrincipalFooterLines(' Şule Çağrı '), [
+        'Şule Çağrı',
+        'Müdür',
+      ]);
+      expect(pdfService.debugPrincipalFooterLines('   '), ['', 'Müdür']);
+    });
+
+    test(
+      'PDF renderer applies newline line breaks for multi-teacher cell values',
+      () async {
+        const snapshotService = ExportSnapshotService();
+        const pdfService = PdfExportService();
+        final singleLineSnapshot = snapshotService.fromCurrentWeek(
+          Week(
+            title: 'T1',
+            startDate: startDate,
+            endDate: endDate,
+            principalName: '',
+            rows: [
+              RosterRow(location: 'Bahçe', teachersByDay: ['Çağrı Şule']),
+            ],
+          ),
+        );
+        final multiLineSnapshot = snapshotService.fromCurrentWeek(
+          Week(
+            title: 'T1',
+            startDate: startDate,
+            endDate: endDate,
+            principalName: '',
+            rows: [
+              RosterRow(location: 'Bahçe', teachersByDay: [r'Çağrı\nŞule']),
+            ],
+          ),
+        );
+
+        final singleBytes = await pdfService.buildPdf(singleLineSnapshot);
+        final multiBytes = await pdfService.buildPdf(multiLineSnapshot);
+
+        final singleBreakCount = _countPdfTextLineBreakOperators(singleBytes);
+        final multiBreakCount = _countPdfTextLineBreakOperators(multiBytes);
+        final singleDecodedStreams = _decodedPdfStreams(singleBytes).join('\n');
+        final multiDecodedStreams = _decodedPdfStreams(multiBytes).join('\n');
+
+        expect(singleBytes.take(4), [37, 80, 68, 70]);
+        expect(multiBytes.take(4), [37, 80, 68, 70]);
+        expect(_pdfPageCount(multiBytes), 1);
+        expect(String.fromCharCodes(multiBytes), contains('/ToUnicode'));
+        expect(multiBreakCount, greaterThanOrEqualTo(singleBreakCount));
+        expect(multiDecodedStreams, isNot(equals(singleDecodedStreams)));
+      },
+    );
+
     test('Excel export writes structured table with duplicate merges', () {
       const snapshotService = ExportSnapshotService();
       const excelService = ExcelExportService();
@@ -803,6 +1246,37 @@ void main() {
       expect(sheet.spannedItems, contains('A4:A5'));
       expect(sheet.spannedItems, contains('B4:B5'));
       expect(sheet.spannedItems, contains('C4:C5'));
+    });
+
+    test('PDF and Excel keep multi teacher cells on separate lines', () async {
+      const snapshotService = ExportSnapshotService();
+      const excelService = ExcelExportService();
+      const pdfService = PdfExportService();
+      const firstTeacher = '\u00C7a\u011Fr\u0131 \u00DCnl\u00FC';
+      const secondTeacher = '\u015Eule \u00D6zt\u00FCrk';
+      final encodedCell = '$firstTeacher\\n$secondTeacher';
+      final snapshot = snapshotService.fromCurrentWeek(
+        Week(
+          title: 'T1',
+          startDate: startDate,
+          endDate: endDate,
+          rows: [
+            RosterRow(location: 'Bah\u00E7e', teachersByDay: [encodedCell]),
+          ],
+        ),
+      );
+
+      final pdfCells = pdfService.debugBodyCells(snapshot.weeks.single);
+      final workbook = xl.Excel.decodeBytes(
+        excelService.buildWorkbook(snapshot),
+      );
+      final sheet = workbook.tables[ExcelExportService.sheetName]!;
+
+      expect(
+        _pdfBodyCell(pdfCells, 1, 0).value,
+        '$firstTeacher\n$secondTeacher',
+      );
+      expect(_cellText(sheet, 2, 1), '$firstTeacher\n$secondTeacher');
     });
 
     test(
@@ -849,6 +1323,32 @@ void main() {
         expect(_cellText(dataSheet, 9, 1), 'Ali');
         expect(_cellText(dataSheet, 10, 0), 'bahçe\u20131');
         expect(_cellText(dataSheet, 10, 2), 'Ayşe');
+      },
+    );
+
+    test(
+      'Excel logical sheet preserves encoded multi teacher data losslessly',
+      () {
+        const snapshotService = ExportSnapshotService();
+        const excelService = ExcelExportService();
+        const encodedCell = r'Ali Yilmaz\nAyse Demir';
+        final snapshot = snapshotService.fromCurrentWeek(
+          Week(
+            title: 'T1',
+            startDate: startDate,
+            endDate: endDate,
+            rows: [
+              RosterRow(location: 'Bah\u00E7e', teachersByDay: [encodedCell]),
+            ],
+          ),
+        );
+
+        final workbook = xl.Excel.decodeBytes(
+          excelService.buildWorkbook(snapshot),
+        );
+        final dataSheet = workbook.tables[ExcelExportService.dataSheetName]!;
+
+        expect(_cellText(dataSheet, 9, 1), encodedCell);
       },
     );
 
@@ -1982,6 +2482,109 @@ String _cellText(xl.Sheet sheet, int row, int column) {
 int _pdfPageCount(List<int> bytes) {
   final text = String.fromCharCodes(bytes);
   return RegExp(r'/Type\s*/Page\b').allMatches(text).length;
+}
+
+int _countPdfTextLineBreakOperators(List<int> bytes) {
+  final streamContents = _decodedPdfStreams(bytes);
+  var count = 0;
+  for (final content in streamContents) {
+    count += RegExp(r'(?<!\S)T\*(?!\S)').allMatches(content).length;
+  }
+  return count;
+}
+
+List<String> _decodedPdfStreams(List<int> bytes) {
+  const streamToken = 'stream';
+  const endStreamToken = 'endstream';
+  const flateDecodeToken = '/FlateDecode';
+  final streamBytes = ascii.encode(streamToken);
+  final endStreamBytes = ascii.encode(endStreamToken);
+  final result = <String>[];
+  var searchFrom = 0;
+
+  while (true) {
+    final streamStart = _indexOfBytes(bytes, streamBytes, searchFrom);
+    if (streamStart < 0) {
+      break;
+    }
+
+    var payloadStart = streamStart + streamBytes.length;
+    if (payloadStart < bytes.length && bytes[payloadStart] == 13) {
+      payloadStart += 1;
+    }
+    if (payloadStart < bytes.length && bytes[payloadStart] == 10) {
+      payloadStart += 1;
+    }
+
+    final endStreamStart = _indexOfBytes(bytes, endStreamBytes, payloadStart);
+    if (endStreamStart < 0) {
+      break;
+    }
+
+    var payloadEnd = endStreamStart;
+    if (payloadEnd > payloadStart && bytes[payloadEnd - 1] == 10) {
+      payloadEnd -= 1;
+    }
+    if (payloadEnd > payloadStart && bytes[payloadEnd - 1] == 13) {
+      payloadEnd -= 1;
+    }
+
+    final dictionaryStart = _lastIndexOfByte(bytes, 60, streamStart);
+    final dictionaryEnd = streamStart;
+    final dictionarySliceStart = dictionaryStart < 0
+        ? (streamStart - 128).clamp(0, bytes.length)
+        : dictionaryStart;
+    final dictionaryText = latin1.decode(
+      bytes.sublist(dictionarySliceStart, dictionaryEnd),
+      allowInvalid: true,
+    );
+
+    var payload = bytes.sublist(payloadStart, payloadEnd);
+    if (dictionaryText.contains(flateDecodeToken)) {
+      try {
+        payload = ZLibDecoder().convert(payload);
+      } on FormatException {
+        payload = const <int>[];
+      }
+    }
+
+    if (payload.isNotEmpty) {
+      result.add(latin1.decode(payload, allowInvalid: true));
+    }
+
+    searchFrom = endStreamStart + endStreamBytes.length;
+  }
+
+  return List<String>.unmodifiable(result);
+}
+
+int _indexOfBytes(List<int> source, List<int> pattern, int start) {
+  if (pattern.isEmpty || start < 0 || start >= source.length) {
+    return -1;
+  }
+  for (var i = start; i <= source.length - pattern.length; i++) {
+    var matches = true;
+    for (var j = 0; j < pattern.length; j++) {
+      if (source[i + j] != pattern[j]) {
+        matches = false;
+        break;
+      }
+    }
+    if (matches) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+int _lastIndexOfByte(List<int> source, int value, int startExclusive) {
+  final start = startExclusive.clamp(0, source.length);
+  for (var i = start - 1; i >= 0; i--) {
+    if (source[i] == value) {
+      return i;
+    }
+  }
+  return -1;
 }
 
 int _daysInMonth(int year, int month) {

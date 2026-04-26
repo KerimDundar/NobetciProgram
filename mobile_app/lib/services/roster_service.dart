@@ -63,7 +63,21 @@ class RosterService {
     return _rotate(rows, forward: false);
   }
 
-  List<RosterRow> _rotate(List<RosterRow> rows, {required bool forward}) {
+  List<RosterRow> rotateDayForward(List<RosterRow> rows, int dayIndex) {
+    _validateDayIndex(dayIndex);
+    return _rotate(rows, forward: true, dayIndex: dayIndex);
+  }
+
+  List<RosterRow> rotateDayBackward(List<RosterRow> rows, int dayIndex) {
+    _validateDayIndex(dayIndex);
+    return _rotate(rows, forward: false, dayIndex: dayIndex);
+  }
+
+  List<RosterRow> _rotate(
+    List<RosterRow> rows, {
+    required bool forward,
+    int? dayIndex,
+  }) {
     final sourceRows = normalizeRows(rows);
     if (sourceRows.isEmpty) {
       return const [];
@@ -73,7 +87,11 @@ class RosterService {
         .map((row) => row.teachersByDay.toList(growable: true))
         .toList(growable: true);
 
-    for (var column = 0; column < rosterDayCount; column++) {
+    final columns = dayIndex == null
+        ? List<int>.generate(rosterDayCount, (index) => index)
+        : <int>[dayIndex];
+
+    for (final column in columns) {
       final indices = <int>[];
       final names = <String>[];
 
@@ -102,5 +120,11 @@ class RosterService {
       sourceRows.length,
       (index) => sourceRows[index].copyWith(teachersByDay: nextRows[index]),
     );
+  }
+
+  void _validateDayIndex(int dayIndex) {
+    if (dayIndex < 0 || dayIndex >= rosterDayCount) {
+      throw const FormatException('Gecersiz gun secimi.');
+    }
   }
 }

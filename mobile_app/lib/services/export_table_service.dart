@@ -1,5 +1,6 @@
 import '../models/roster_row.dart';
 import '../models/week.dart';
+import 'cell_teacher_codec.dart';
 import 'duplicate_location_service.dart';
 import 'text_normalizer.dart';
 
@@ -27,11 +28,15 @@ class ExportTableService {
     DuplicateLocationService duplicateLocationService =
         const DuplicateLocationService(),
     TextNormalizer normalizer = const TextNormalizer(),
+    CellTeacherCodec cellTeacherCodec = const CellTeacherCodec(),
   }) : _duplicateLocationService = duplicateLocationService,
-       _normalizer = normalizer;
+       _normalizer = normalizer,
+       _cellTeacherCodec = cellTeacherCodec;
 
   final DuplicateLocationService _duplicateLocationService;
   final TextNormalizer _normalizer;
+  final CellTeacherCodec _cellTeacherCodec;
+  static const String _multiTeacherLineBreakToken = r'\n';
 
   ExportWeekTable buildWeekTable(Week week) {
     final bodyRows = week.rows
@@ -39,7 +44,7 @@ class ExportTableService {
           return <String>[
             _normalizer.displayClean(row.location),
             for (var day = 0; day < rosterDayCount; day++)
-              _normalizer.displayClean(row.teachersByDay[day]),
+              _normalizeTeacherCell(row.teachersByDay[day]),
           ];
         })
         .toList(growable: true);
@@ -103,20 +108,42 @@ class ExportTableService {
     int bottomRow,
     int column,
   ) {
-    final topName = _normalizer.displayClean(rows[topRow][column]);
-    final bottomName = _normalizer.displayClean(rows[bottomRow][column]);
-    rows[topRow][column] = topName;
-    rows[bottomRow][column] = bottomName;
-    if (topName.isNotEmpty &&
-        bottomName.isNotEmpty &&
-        !_normalizer.canonicalEquals(topName, bottomName)) {
+    final topCell = _normalizeTeacherCell(rows[topRow][column]);
+    final bottomCell = _normalizeTeacherCell(rows[bottomRow][column]);
+    rows[topRow][column] = topCell;
+    rows[bottomRow][column] = bottomCell;
+    if (topCell.isNotEmpty &&
+        bottomCell.isNotEmpty &&
+        !_teacherCellsEqual(topCell, bottomCell)) {
       return;
     }
 
-    rows[topRow][column] = topName.isNotEmpty ? topName : bottomName;
+    rows[topRow][column] = topCell.isNotEmpty ? topCell : bottomCell;
     rows[bottomRow][column] = '';
     spans.add(
       ExportCellSpan(column: column, startRow: topRow, endRow: bottomRow),
     );
+  }
+
+  String _normalizeTeacherCell(String value) {
+    final decoded = value.replaceAll(_multiTeacherLineBreakToken, '\n');
+    return _cellTeacherCodec.serialize(_cellTeacherCodec.parse(decoded));
+  }
+
+  bool _teacherCellsEqual(String left, String right) {
+    final leftTeachers = _cellTeacherCodec.parse(left);
+    final rightTeachers = _cellTeacherCodec.parse(right);
+    if (leftTeachers.length != rightTeachers.length) {
+      return false;
+    }
+    for (var index = 0; index < leftTeachers.length; index++) {
+      if (!_normalizer.canonicalEquals(
+        leftTeachers[index],
+        rightTeachers[index],
+      )) {
+        return false;
+      }
+    }
+    return true;
   }
 }

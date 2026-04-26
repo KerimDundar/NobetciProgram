@@ -1,3 +1,7 @@
+# ARCHIVED — DO NOT LOAD AS CONTEXT
+# This file describes the original Python desktop app. The Flutter implementation is complete.
+# Use .claude/agents/roster-logic.md for active guidance.
+
 ## ROSTER TEXT NORMALIZATION
 
 Source:

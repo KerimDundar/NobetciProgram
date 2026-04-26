@@ -1,20 +1,25 @@
 import 'package:flutter/material.dart';
 
-import '../../models/roster_row.dart';
 import '../../models/week.dart';
 import '../../services/export_file_service.dart';
+import '../../services/grid_cell_status_service.dart';
 import '../../services/week_grid_projection_service.dart';
 import '../../state/roster_state.dart';
+import '../../state/teacher_state.dart';
+import '../theme/app_theme.dart';
 import 'edit_week_screen.dart';
+import 'teacher_list_screen.dart';
 
 class RosterHomeScreen extends StatelessWidget {
   const RosterHomeScreen({
     super.key,
     required this.state,
+    this.teacherState,
     this.exportFileService = const ExportFileService(),
   });
 
   final RosterState state;
+  final TeacherState? teacherState;
   final ExportFileService exportFileService;
 
   @override
@@ -29,6 +34,13 @@ class RosterHomeScreen extends StatelessWidget {
             title: const Text('Nöbet Çizelgesi'),
             actions: [
               IconButton(
+                tooltip: 'Ogretmenler',
+                onPressed: teacherState == null
+                    ? null
+                    : () => _openTeacherScreen(context),
+                icon: const Icon(Icons.groups_outlined),
+              ),
+              IconButton(
                 tooltip: 'Düzenle',
                 onPressed: () => _openEditScreen(context),
                 icon: const Icon(Icons.edit),
@@ -36,24 +48,22 @@ class RosterHomeScreen extends StatelessWidget {
               IconButton(
                 tooltip: 'Önceki hafta',
                 onPressed: state.goToPreviousWeek,
-                icon: const Icon(Icons.chevron_left),
+                icon: const Icon(Icons.arrow_upward),
               ),
               IconButton(
                 tooltip: 'Sonraki hafta',
                 onPressed: state.goToNextWeek,
-                icon: const Icon(Icons.chevron_right),
+                icon: const Icon(Icons.arrow_downward),
               ),
             ],
           ),
           body: SafeArea(
             child: ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppTheme.pagePadding),
               children: [
                 _WeekHeader(week: week),
                 const SizedBox(height: 8),
                 _DayGridPreview(week: week),
-                const SizedBox(height: 12),
-                _WeekDashboard(week: week),
                 const SizedBox(height: 16),
                 _WeekActions(
                   onPrevious: state.goToPreviousWeek,
@@ -79,7 +89,10 @@ class RosterHomeScreen extends StatelessWidget {
 
   Future<void> _openEditScreen(BuildContext context) async {
     final saved = await Navigator.of(context).push<bool>(
-      MaterialPageRoute<bool>(builder: (_) => EditWeekScreen(state: state)),
+      MaterialPageRoute<bool>(
+        builder: (_) =>
+            EditWeekScreen(state: state, teacherState: teacherState),
+      ),
     );
     if (saved != true || !context.mounted) {
       return;
@@ -88,6 +101,25 @@ class RosterHomeScreen extends StatelessWidget {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Hafta kaydedildi.')));
+  }
+
+  Future<void> _openTeacherScreen(BuildContext context) async {
+    final teacherState = this.teacherState;
+    if (teacherState == null) {
+      return;
+    }
+
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => TeacherListScreen(
+          state: teacherState,
+          currentWeek: state.currentWeek,
+          onTeacherDeletedFromRoster: (teacher) {
+            return state.clearAssignmentsForTeacher(teacher.name);
+          },
+        ),
+      ),
+    );
   }
 }
 
@@ -101,6 +133,7 @@ class _DayGridPreview extends StatefulWidget {
 }
 
 class _DayGridPreviewState extends State<_DayGridPreview> {
+  static const GridCellStatusService _statusService = GridCellStatusService();
   int _selectedDayIndex = 0;
 
   @override
@@ -137,6 +170,10 @@ class _DayGridPreviewState extends State<_DayGridPreview> {
               for (final cell in selectedDay.cells)
                 _DayGridRow(
                   cell: cell,
+                  status: _statusService.statusForCell(
+                    day: selectedDay,
+                    cell: cell,
+                  ),
                   onTap: () => _showCellDetails(context, selectedDay, cell),
                 ),
           ],
@@ -154,6 +191,12 @@ class _DayGridPreviewState extends State<_DayGridPreview> {
       context: context,
       builder: (context) {
         final teacher = cell.teacher.isEmpty ? 'Boş' : cell.teacher;
+        final status = _statusService.statusForCell(day: day, cell: cell);
+        final statusText = switch (status) {
+          GridCellStatus.empty => 'Boş',
+          GridCellStatus.filled => 'Dolu',
+          GridCellStatus.conflict => 'Çakışma',
+        };
 
         return SafeArea(
           child: Padding(
@@ -170,10 +213,12 @@ class _DayGridPreviewState extends State<_DayGridPreview> {
                 Text('Gün: ${day.dayName}'),
                 Text('Görev yeri: ${cell.location}'),
                 Text('Öğretmen: $teacher'),
+                Text('Durum: $statusText'),
                 Text('Satır: ${cell.rowIndex + 1}'),
                 if (cell.isDuplicateLocation) ...[
                   const SizedBox(height: 8),
                   const Text('Tekrar eden görev yeri'),
+                  Text('Grup: ${cell.duplicateRunGroup}'),
                 ],
               ],
             ),
@@ -207,13 +252,13 @@ class _GridHeader extends StatelessWidget {
         Row(
           children: [
             Expanded(child: Text('Günlük Plan', style: textTheme.titleMedium)),
-            Text(selectedDay.dayName, style: textTheme.labelMedium),
           ],
         ),
         const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
           child: SegmentedButton<int>(
+            showSelectedIcon: false,
             style: const ButtonStyle(
               visualDensity: VisualDensity.compact,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -222,7 +267,12 @@ class _GridHeader extends StatelessWidget {
               for (final day in projection.days)
                 ButtonSegment<int>(
                   value: day.dayIndex,
-                  label: Text(shortDayName(day.dayName)),
+                  label: Text(
+                    shortDayName(day.dayName),
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.fade,
+                  ),
                 ),
             ],
             selected: {selectedDayIndex},
@@ -231,27 +281,30 @@ class _GridHeader extends StatelessWidget {
             },
           ),
         ),
-        const SizedBox(height: 6),
-        _SelectedDayBanner(
-          dayName: selectedDay.dayName,
-          filledCount: selectedDay.cells.where((cell) => !cell.isEmpty).length,
-          totalCount: selectedDay.cells.length,
-        ),
       ],
     );
   }
 }
 
 class _DayGridRow extends StatelessWidget {
-  const _DayGridRow({required this.cell, required this.onTap});
+  const _DayGridRow({
+    required this.cell,
+    required this.status,
+    required this.onTap,
+  });
 
   final WeekGridCell cell;
+  final GridCellStatus status;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final displayTeacher = cell.teacher.isEmpty ? '-' : cell.teacher;
-    final statusLabel = cell.isEmpty ? 'Boş' : 'Dolu';
+    final statusLabel = switch (status) {
+      GridCellStatus.empty => 'Boş',
+      GridCellStatus.filled => 'Dolu',
+      GridCellStatus.conflict => 'Çakışma',
+    };
 
     return Semantics(
       button: true,
@@ -285,10 +338,10 @@ class _DayGridRow extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                _GridStatusBadge(label: statusLabel, isFilled: !cell.isEmpty),
+                _GridStatusBadge(status: status, label: statusLabel),
                 if (cell.isDuplicateLocation) ...[
                   const SizedBox(width: 4),
-                  const _DuplicateLocationBadge(),
+                  _DuplicateLocationBadge(group: cell.duplicateRunGroup),
                 ],
               ],
             ),
@@ -299,81 +352,42 @@ class _DayGridRow extends StatelessWidget {
   }
 }
 
-class _SelectedDayBanner extends StatelessWidget {
-  const _SelectedDayBanner({
-    required this.dayName,
-    required this.filledCount,
-    required this.totalCount,
-  });
-
-  final String dayName;
-  final int filledCount;
-  final int totalCount;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    return Container(
-      key: const ValueKey('day-grid-selected-day-label'),
-      width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 32),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: colors.primaryContainer,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 4,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          Icon(Icons.today, color: colors.onPrimaryContainer, size: 16),
-          Text(
-            'Seçili gün: $dayName',
-            style: TextStyle(
-              color: colors.onPrimaryContainer,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          Text(
-            '$filledCount/$totalCount dolu',
-            style: TextStyle(color: colors.onPrimaryContainer),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _GridStatusBadge extends StatelessWidget {
-  const _GridStatusBadge({required this.label, required this.isFilled});
+  const _GridStatusBadge({required this.status, required this.label});
 
+  final GridCellStatus status;
   final String label;
-  final bool isFilled;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final backgroundColor = switch (status) {
+      GridCellStatus.empty => colors.surfaceContainerHighest,
+      GridCellStatus.filled => colors.secondaryContainer,
+      GridCellStatus.conflict => colors.errorContainer,
+    };
+    final icon = switch (status) {
+      GridCellStatus.empty => Icons.radio_button_unchecked,
+      GridCellStatus.filled => Icons.check_circle_outline,
+      GridCellStatus.conflict => Icons.warning_amber_outlined,
+    };
 
     return Chip(
-      avatar: Icon(
-        isFilled ? Icons.check_circle_outline : Icons.radio_button_unchecked,
-        size: 14,
-      ),
+      avatar: Icon(icon, size: 14),
       visualDensity: VisualDensity.compact,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       labelPadding: const EdgeInsets.symmetric(horizontal: 2),
-      backgroundColor: isFilled
-          ? colors.secondaryContainer
-          : colors.surfaceContainerHighest,
+      backgroundColor: backgroundColor,
       label: Text(label, style: Theme.of(context).textTheme.labelSmall),
     );
   }
 }
 
 class _DuplicateLocationBadge extends StatelessWidget {
-  const _DuplicateLocationBadge();
+  const _DuplicateLocationBadge({required this.group});
+
+  final String group;
 
   @override
   Widget build(BuildContext context) {
@@ -510,7 +524,7 @@ class _WeekActions extends StatelessWidget {
         Expanded(
           child: OutlinedButton.icon(
             onPressed: onPrevious,
-            icon: const Icon(Icons.chevron_left),
+            icon: const Icon(Icons.arrow_upward),
             label: const Text('Önceki Hafta'),
           ),
         ),
@@ -518,114 +532,11 @@ class _WeekActions extends StatelessWidget {
         Expanded(
           child: FilledButton.icon(
             onPressed: onNext,
-            icon: const Icon(Icons.chevron_right),
+            icon: const Icon(Icons.arrow_downward),
             label: const Text('Sonraki Hafta'),
           ),
         ),
       ],
-    );
-  }
-}
-
-class _WeekDashboard extends StatelessWidget {
-  const _WeekDashboard({required this.week});
-
-  final Week week;
-
-  @override
-  Widget build(BuildContext context) {
-    final projection = const WeekGridProjectionService().project(week);
-    final filledCount = _filledCount(projection);
-    final totalCount = week.rows.length * rosterDayCount;
-    final emptyCount = totalCount - filledCount;
-    final textTheme = Theme.of(context).textTheme;
-
-    return Card(
-      margin: EdgeInsets.zero,
-      child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: 12),
-        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        title: Text('Hafta Özeti', style: textTheme.titleMedium),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              _SummaryChip(label: 'Görev yeri', value: '${week.rows.length}'),
-              _SummaryChip(label: 'Dolu', value: '$filledCount'),
-              _SummaryChip(label: 'Boş', value: '$emptyCount'),
-            ],
-          ),
-        ),
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final day in projection.days)
-                  _DayDensityChip(day: day, totalLocations: week.rows.length),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  int _filledCount(WeekGridProjection projection) {
-    return projection.days.fold<int>(0, (total, day) {
-      return total + day.cells.where((cell) => !cell.isEmpty).length;
-    });
-  }
-}
-
-class _SummaryChip extends StatelessWidget {
-  const _SummaryChip({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    return Chip(
-      label: Text('$label: $value'),
-      backgroundColor: colors.surfaceContainerHighest,
-    );
-  }
-}
-
-class _DayDensityChip extends StatelessWidget {
-  const _DayDensityChip({required this.day, required this.totalLocations});
-
-  final WeekGridDay day;
-  final int totalLocations;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final filled = day.cells.where((cell) => !cell.isEmpty).length;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            shortDayName(day.dayName),
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-          Text('$filled/$totalLocations'),
-        ],
-      ),
     );
   }
 }

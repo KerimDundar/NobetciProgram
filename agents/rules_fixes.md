@@ -1,3 +1,7 @@
+# ARCHIVED — DO NOT LOAD AS CONTEXT
+# Fix rules are distilled into .claude/agents/roster-logic.md and .claude/agents/export.md.
+# This file remains for traceability only.
+
 # Critical Review Fix Rules
 
 This file does not replace `agents/rules.md`.

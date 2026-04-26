@@ -1,4 +1,9 @@
 # Rules3.md - Mobile UI Refactor Plan
+## FIX
+Grid UI must not be rendered without projection data binding.
+If projection exists, minimal binding must be included in the same step.
+Do not change business logic
+Mapping between grid and original row/day indexes must be explicitly tested in each step.
 
 ## Authority
 

@@ -296,6 +296,7 @@ class PdfExportService {
     required pw.TextStyle style,
     PdfColor? fillColor,
   }) {
+    final textLines = _cellLines(value);
     return pw.Container(
       width: width,
       height: height,
@@ -305,12 +306,34 @@ class PdfExportService {
         color: fillColor,
         border: pw.Border.all(color: PdfColors.black, width: 0.5),
       ),
-      child: pw.Text(
-        value.isEmpty ? ' ' : value,
-        textAlign: pw.TextAlign.center,
-        style: style,
-      ),
+      child: textLines.length == 1
+          ? pw.Text(
+              textLines.first,
+              textAlign: pw.TextAlign.center,
+              style: style,
+            )
+          : pw.Column(
+              mainAxisAlignment: pw.MainAxisAlignment.center,
+              crossAxisAlignment: pw.CrossAxisAlignment.center,
+              children: [
+                for (final line in textLines)
+                  pw.Text(line, textAlign: pw.TextAlign.center, style: style),
+              ],
+            ),
     );
+  }
+
+  List<String> _cellLines(String value) {
+    final lines = value
+        .replaceAll('\r\n', '\n')
+        .split('\n')
+        .map(_normalizer.displayClean)
+        .where((line) => line.isNotEmpty)
+        .toList(growable: false);
+    if (lines.isEmpty) {
+      return const [' '];
+    }
+    return lines;
   }
 
   List<pw.Widget> _schoolLine(
@@ -341,16 +364,25 @@ class PdfExportService {
     pw.Font font,
     double fontSize,
   ) {
-    return pw.Text(
-      _principalText(principalName),
-      textAlign: pw.TextAlign.right,
-      style: pw.TextStyle(font: font, fontSize: fontSize),
+    final lines = _principalLines(principalName);
+    final style = pw.TextStyle(font: font, fontSize: fontSize);
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.end,
+      children: [
+        pw.Text(lines.first, textAlign: pw.TextAlign.right, style: style),
+        pw.Text(lines.last, textAlign: pw.TextAlign.right, style: style),
+      ],
     );
   }
 
-  String _principalText(String value) {
+  List<String> _principalLines(String value) {
     final cleanName = _normalizer.displayClean(value);
-    return cleanName.isEmpty ? 'Müdür :' : 'Müdür : $cleanName';
+    return <String>[cleanName, 'Müdür'];
+  }
+
+  @visibleForTesting
+  List<String> debugPrincipalFooterLines(String principalName) {
+    return List<String>.unmodifiable(_principalLines(principalName));
   }
 
   String _firstNonEmptyField(List<Week> weeks, String Function(Week) select) {

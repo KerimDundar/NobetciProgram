@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 
 import '../../models/roster_row.dart';
+import '../../services/cell_teacher_codec.dart';
 import '../../state/roster_state.dart';
+import '../../state/teacher_state.dart';
+import '../widgets/teacher_selection_panel.dart';
+
+const String _draftMultiTeacherLineBreakToken = r'\n';
+const CellTeacherCodec _draftCellTeacherCodec = CellTeacherCodec();
 
 class EditWeekScreen extends StatefulWidget {
-  const EditWeekScreen({super.key, required this.state});
+  const EditWeekScreen({super.key, required this.state, this.teacherState});
 
   final RosterState state;
+  final TeacherState? teacherState;
 
   @override
   State<EditWeekScreen> createState() => _EditWeekScreenState();
@@ -152,7 +159,8 @@ class _EditWeekScreenState extends State<EditWeekScreen> {
                     _selectedGridDayIndex = dayIndex;
                   });
                 },
-                onUpdateTeacher: _updateGridTeacher,
+                onPickTeacher: _pickTeacherForCell,
+                onRemoveTeacher: _removeTeacherFromCell,
                 onUpdateLocation: _updateGridLocation,
                 onAddRow: _addRow,
                 onDeleteRow: _rows.length == 1 ? null : _deleteRow,
@@ -234,12 +242,19 @@ class _EditWeekScreenState extends State<EditWeekScreen> {
   }
 
   void _rotateDraft({required bool forward}) {
+    final selectedDayName = rosterDayNames[_selectedGridDayIndex];
     final rows = forward
-        ? widget.state.rotateRowsForward(_currentRows())
-        : widget.state.rotateRowsBackward(_currentRows());
+        ? widget.state.rotateRowsDayForward(
+            _currentRows(),
+            _selectedGridDayIndex,
+          )
+        : widget.state.rotateRowsDayBackward(
+            _currentRows(),
+            _selectedGridDayIndex,
+          );
     final message = forward
-        ? 'Pazartesi-Cuma sütunları ileri döndürüldü.'
-        : 'Pazartesi-Cuma sütunları geri döndürüldü.';
+        ? '$selectedDayName sütunu ileri döndürüldü.'
+        : '$selectedDayName sütunu geri döndürüldü.';
     _replaceRows(rows, statusMessage: message);
 
     if (!mounted) {
@@ -250,11 +265,70 @@ class _EditWeekScreenState extends State<EditWeekScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _updateGridTeacher(int rowIndex, int dayIndex, String value) {
-    final controller = _rows[rowIndex].teacherControllers[dayIndex];
-    if (controller.text != value) {
-      controller.text = value;
+  Future<void> _pickTeacherForCell(int rowIndex, int dayIndex) async {
+    final teacherState = widget.teacherState;
+    if (teacherState != null && teacherState.isLoading) {
+      await teacherState.ready;
+      if (!mounted) {
+        return;
+      }
     }
+
+    final teachers = teacherState?.teachers ?? widget.state.teachers;
+    final draftWeek = widget.state.currentWeek.copyWith(rows: _currentRows());
+
+    widget.state.selectCell(rowIndex: rowIndex, dayIndex: dayIndex);
+    final selected = await showTeacherSelectionPanel(
+      context,
+      title: '${rosterDayNames[dayIndex]} - Satir ${rowIndex + 1}',
+      teachers: teachers,
+      week: draftWeek,
+      assignmentDayIndex: dayIndex,
+    );
+    widget.state.clearSelectedCell();
+    if (selected == null) {
+      return;
+    }
+
+    final draftState = _draftState();
+    final error = draftState.addTeacherToCell(
+      rowIndex: rowIndex,
+      dayIndex: dayIndex,
+      teacherName: selected.name,
+    );
+    if (error != null || !mounted) {
+      if (error != null && mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error)));
+      }
+      return;
+    }
+
+    final nextCell =
+        draftState.currentWeek.rows[rowIndex].teachersByDay[dayIndex];
+    _updateDraftCell(rowIndex: rowIndex, dayIndex: dayIndex, value: nextCell);
+  }
+
+  void _removeTeacherFromCell(int rowIndex, int dayIndex, String teacherName) {
+    final draftState = _draftState();
+    final error = draftState.removeTeacherFromCell(
+      rowIndex: rowIndex,
+      dayIndex: dayIndex,
+      teacherName: teacherName,
+    );
+    if (error != null || !mounted) {
+      if (error != null && mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error)));
+      }
+      return;
+    }
+
+    final nextCell =
+        draftState.currentWeek.rows[rowIndex].teachersByDay[dayIndex];
+    _updateDraftCell(rowIndex: rowIndex, dayIndex: dayIndex, value: nextCell);
   }
 
   void _updateGridLocation(int rowIndex, String value) {
@@ -262,6 +336,28 @@ class _EditWeekScreenState extends State<EditWeekScreen> {
     if (controller.text != value) {
       controller.text = value;
     }
+  }
+
+  RosterState _draftState() {
+    return RosterState(
+      currentWeek: widget.state.currentWeek.copyWith(rows: _currentRows()),
+    );
+  }
+
+  void _updateDraftCell({
+    required int rowIndex,
+    required int dayIndex,
+    required String value,
+  }) {
+    final displayValue = _decodeCellTeacherValue(value);
+    final controller = _rows[rowIndex].teacherControllers[dayIndex];
+    if (controller.text == displayValue) {
+      return;
+    }
+    setState(() {
+      controller.text = displayValue;
+      _syncDraftFlags(clearStatus: true);
+    });
   }
 
   void _save() {
@@ -575,7 +671,7 @@ class _RotationActions extends StatelessWidget {
             Text('Rotasyon', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 4),
             Text(
-              'Pazartesi-Cuma sütunları birlikte döndürülür.',
+              'Yalnızca seçili gün sütunu döndürülür.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 12),
@@ -585,7 +681,7 @@ class _RotationActions extends StatelessWidget {
                   child: OutlinedButton.icon(
                     onPressed: onRotateBackward,
                     icon: const Icon(Icons.arrow_upward),
-                    label: const Text('Pazartesi-Cuma Geri'),
+                    label: const Text('Seçili Gün Geri'),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -593,7 +689,7 @@ class _RotationActions extends StatelessWidget {
                   child: OutlinedButton.icon(
                     onPressed: onRotateForward,
                     icon: const Icon(Icons.arrow_downward),
-                    label: const Text('Pazartesi-Cuma İleri'),
+                    label: const Text('Seçili Gün İleri'),
                   ),
                 ),
               ],
@@ -610,7 +706,8 @@ class _EditDayGridBinding extends StatelessWidget {
     required this.selectedDayIndex,
     required this.rows,
     required this.onSelectDay,
-    required this.onUpdateTeacher,
+    required this.onPickTeacher,
+    required this.onRemoveTeacher,
     required this.onUpdateLocation,
     required this.onAddRow,
     required this.onDeleteRow,
@@ -621,7 +718,9 @@ class _EditDayGridBinding extends StatelessWidget {
   final int selectedDayIndex;
   final List<_RosterRowDraft> rows;
   final ValueChanged<int> onSelectDay;
-  final void Function(int rowIndex, int dayIndex, String value) onUpdateTeacher;
+  final void Function(int rowIndex, int dayIndex) onPickTeacher;
+  final void Function(int rowIndex, int dayIndex, String teacherName)
+  onRemoveTeacher;
   final void Function(int rowIndex, String value) onUpdateLocation;
   final VoidCallback onAddRow;
   final void Function(int rowIndex)? onDeleteRow;
@@ -630,6 +729,10 @@ class _EditDayGridBinding extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final conflictRowIndexes = _conflictRowsForDay(
+      rows: rows,
+      dayIndex: selectedDayIndex,
+    );
     return Card(
       key: const ValueKey('edit-grid-binding'),
       child: Padding(
@@ -646,11 +749,17 @@ class _EditDayGridBinding extends StatelessWidget {
               width: double.infinity,
               child: SegmentedButton<int>(
                 key: const ValueKey('edit-grid-day-selector'),
+                showSelectedIcon: false,
                 segments: [
                   for (var day = 0; day < rosterDayCount; day++)
                     ButtonSegment<int>(
                       value: day,
-                      label: Text(_shortDayName(rosterDayNames[day])),
+                      label: Text(
+                        _shortDayName(rosterDayNames[day]),
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.fade,
+                      ),
                     ),
                 ],
                 selected: {selectedDayIndex},
@@ -678,10 +787,12 @@ class _EditDayGridBinding extends StatelessWidget {
                   rowIndex: rowIndex,
                   dayIndex: selectedDayIndex,
                   row: rows[rowIndex],
-                  onUpdateTeacher: onUpdateTeacher,
+                  onPickTeacher: onPickTeacher,
+                  onRemoveTeacher: onRemoveTeacher,
                   onUpdateLocation: onUpdateLocation,
                   onDeleteRow: onDeleteRow,
                   isDuplicateLocation: duplicateRowIndexes.contains(rowIndex),
+                  isConflict: conflictRowIndexes.contains(rowIndex),
                   showValidationError:
                       showValidationHints && _rowNeedsLocation(rows[rowIndex]),
                 ),
@@ -694,9 +805,68 @@ class _EditDayGridBinding extends StatelessWidget {
   bool _rowNeedsLocation(_RosterRowDraft row) {
     final hasLocation = row.locationController.text.trim().isNotEmpty;
     final hasTeacher = row.teacherControllers.any((controller) {
-      return controller.text.trim().isNotEmpty;
+      return _parseCellTeachers(controller.text).isNotEmpty;
     });
     return !hasLocation && hasTeacher;
+  }
+
+  Set<int> _conflictRowsForDay({
+    required List<_RosterRowDraft> rows,
+    required int dayIndex,
+  }) {
+    String normalize(String value) {
+      return value.replaceAll(RegExp(r'\s+'), ' ').trim().toLowerCase();
+    }
+
+    final groupedRows = <String, List<int>>{};
+    for (var index = 0; index < rows.length; index++) {
+      final key = normalize(rows[index].locationController.text);
+      if (key.isEmpty) {
+        continue;
+      }
+      groupedRows.putIfAbsent(key, () => <int>[]).add(index);
+    }
+
+    final conflicts = <int>{};
+    for (final indexes in groupedRows.values) {
+      if (indexes.length < 2) {
+        continue;
+      }
+      final names = indexes
+          .expand((index) {
+            return _parseCellTeachers(
+              rows[index].teacherControllers[dayIndex].text,
+            ).map(normalize);
+          })
+          .where((name) => name.isNotEmpty)
+          .toSet();
+      if (names.length > 1) {
+        conflicts.addAll(indexes);
+      }
+    }
+
+    final teacherGroupedRows = <String, List<int>>{};
+    for (var index = 0; index < rows.length; index++) {
+      final teachers = _parseCellTeachers(
+        rows[index].teacherControllers[dayIndex].text,
+      );
+      for (final teacher in teachers) {
+        final normalizedTeacher = normalize(teacher);
+        if (normalizedTeacher.isEmpty) {
+          continue;
+        }
+        teacherGroupedRows
+            .putIfAbsent(normalizedTeacher, () => <int>[])
+            .add(index);
+      }
+    }
+    for (final indexes in teacherGroupedRows.values) {
+      if (indexes.length > 1) {
+        conflicts.addAll(indexes);
+      }
+    }
+
+    return conflicts;
   }
 }
 
@@ -705,20 +875,25 @@ class _EditDayGridRow extends StatelessWidget {
     required this.rowIndex,
     required this.dayIndex,
     required this.row,
-    required this.onUpdateTeacher,
+    required this.onPickTeacher,
+    required this.onRemoveTeacher,
     required this.onUpdateLocation,
     required this.onDeleteRow,
     required this.isDuplicateLocation,
+    required this.isConflict,
     required this.showValidationError,
   });
 
   final int rowIndex;
   final int dayIndex;
   final _RosterRowDraft row;
-  final void Function(int rowIndex, int dayIndex, String value) onUpdateTeacher;
+  final void Function(int rowIndex, int dayIndex) onPickTeacher;
+  final void Function(int rowIndex, int dayIndex, String teacherName)
+  onRemoveTeacher;
   final void Function(int rowIndex, String value) onUpdateLocation;
   final void Function(int rowIndex)? onDeleteRow;
   final bool isDuplicateLocation;
+  final bool isConflict;
   final bool showValidationError;
 
   @override
@@ -726,8 +901,12 @@ class _EditDayGridRow extends StatelessWidget {
     final location = row.locationController.text.trim().isEmpty
         ? 'Görev yeri ${rowIndex + 1}'
         : row.locationController.text.trim();
-    final teacher = row.teacherControllers[dayIndex].text.trim();
-    final isFilled = teacher.isNotEmpty;
+    final teachers = _parseCellTeachers(row.teacherControllers[dayIndex].text);
+    final status = isConflict
+        ? _EditRowStatus.conflict
+        : teachers.isNotEmpty
+        ? _EditRowStatus.filled
+        : _EditRowStatus.empty;
 
     return ConstrainedBox(
       key: ValueKey('edit-grid-cell-$dayIndex-$rowIndex'),
@@ -749,8 +928,12 @@ class _EditDayGridRow extends StatelessWidget {
                         style: Theme.of(context).textTheme.titleSmall,
                       ),
                       _EditGridStatusBadge(
-                        label: isFilled ? 'Dolu' : 'Boş',
-                        isFilled: isFilled,
+                        label: switch (status) {
+                          _EditRowStatus.empty => 'Boş',
+                          _EditRowStatus.filled => 'Dolu',
+                          _EditRowStatus.conflict => 'Çakışma',
+                        },
+                        status: status,
                       ),
                       if (isDuplicateLocation) const _EditDuplicateBadge(),
                       Text(
@@ -776,12 +959,50 @@ class _EditDayGridRow extends StatelessWidget {
                 ),
               ],
             ),
-            TextField(
-              key: ValueKey('edit-grid-teacher-input-$dayIndex-$rowIndex'),
-              controller: row.teacherControllers[dayIndex],
-              decoration: InputDecoration(labelText: rosterDayNames[dayIndex]),
-              textInputAction: TextInputAction.next,
-              onChanged: (value) => onUpdateTeacher(rowIndex, dayIndex, value),
+            if (teachers.isEmpty)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Öğretmen atanmamış',
+                  key: ValueKey('edit-grid-teacher-empty-$dayIndex-$rowIndex'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              )
+            else
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (
+                      var teacherIndex = 0;
+                      teacherIndex < teachers.length;
+                      teacherIndex++
+                    )
+                      InputChip(
+                        key: ValueKey(
+                          'edit-grid-teacher-chip-$dayIndex-$rowIndex-$teacherIndex',
+                        ),
+                        label: Text(teachers[teacherIndex]),
+                        onDeleted: () => onRemoveTeacher(
+                          rowIndex,
+                          dayIndex,
+                          teachers[teacherIndex],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerRight,
+              child: OutlinedButton.icon(
+                key: ValueKey('edit-grid-pick-teacher-$dayIndex-$rowIndex'),
+                onPressed: () => onPickTeacher(rowIndex, dayIndex),
+                icon: const Icon(Icons.person_search),
+                label: const Text('Öğretmen Seç'),
+              ),
             ),
             if (showValidationError) ...[
               const SizedBox(height: 6),
@@ -849,25 +1070,30 @@ class _EditSelectedDayBanner extends StatelessWidget {
   }
 }
 
+enum _EditRowStatus { empty, filled, conflict }
+
 class _EditGridStatusBadge extends StatelessWidget {
-  const _EditGridStatusBadge({required this.label, required this.isFilled});
+  const _EditGridStatusBadge({required this.label, required this.status});
 
   final String label;
-  final bool isFilled;
+  final _EditRowStatus status;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
     return Chip(
-      avatar: Icon(
-        isFilled ? Icons.check_circle_outline : Icons.radio_button_unchecked,
-        size: 16,
-      ),
+      avatar: Icon(switch (status) {
+        _EditRowStatus.empty => Icons.radio_button_unchecked,
+        _EditRowStatus.filled => Icons.check_circle_outline,
+        _EditRowStatus.conflict => Icons.warning_amber_outlined,
+      }, size: 16),
       visualDensity: VisualDensity.compact,
-      backgroundColor: isFilled
-          ? colors.secondaryContainer
-          : colors.surfaceContainerHighest,
+      backgroundColor: switch (status) {
+        _EditRowStatus.empty => colors.surfaceContainerHighest,
+        _EditRowStatus.filled => colors.secondaryContainer,
+        _EditRowStatus.conflict => colors.errorContainer,
+      },
       label: Text(label),
     );
   }
@@ -986,7 +1212,9 @@ class _RosterRowDraft {
        teacherControllers = List<TextEditingController>.generate(
          rosterDayCount,
          (index) => TextEditingController(
-           text: index < teachersByDay.length ? teachersByDay[index] : '',
+           text: index < teachersByDay.length
+               ? _decodeCellTeacherValue(teachersByDay[index])
+               : '',
          ),
        );
 
@@ -1023,7 +1251,7 @@ class _RosterRowDraft {
       location: locationController.text,
       teachersByDay: teacherControllers
           .map((controller) {
-            return controller.text;
+            return _encodeCellTeacherValue(controller.text);
           })
           .toList(growable: false),
     );
@@ -1035,6 +1263,18 @@ class _RosterRowDraft {
       controller.dispose();
     }
   }
+}
+
+List<String> _parseCellTeachers(String cellValue) {
+  return _draftCellTeacherCodec.parse(_decodeCellTeacherValue(cellValue));
+}
+
+String _decodeCellTeacherValue(String value) {
+  return value.replaceAll(_draftMultiTeacherLineBreakToken, '\n');
+}
+
+String _encodeCellTeacherValue(String value) {
+  return value.replaceAll('\n', _draftMultiTeacherLineBreakToken);
 }
 
 String _formatDate(DateTime date) {

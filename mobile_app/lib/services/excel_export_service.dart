@@ -105,7 +105,14 @@ class ExcelExportService {
     for (var bodyRow = 0; bodyRow < table.bodyRows.length; bodyRow++) {
       final values = table.bodyRows[bodyRow];
       for (var column = 0; column < values.length; column++) {
-        _writeCell(sheet, row + bodyRow, column, values[column], _bodyStyle);
+        _writeCell(
+          sheet,
+          row + bodyRow,
+          column,
+          values[column],
+          _bodyStyle,
+          preserveLineBreaks: column > 0,
+        );
       }
     }
 
@@ -121,7 +128,10 @@ class ExcelExportService {
       sheet.merge(
         start,
         end,
-        customValue: _textValue(table.bodyRows[span.startRow][span.column]),
+        customValue: _textValue(
+          table.bodyRows[span.startRow][span.column],
+          preserveLineBreaks: span.column > 0,
+        ),
       );
       sheet.setMergedCellStyle(start, _bodyStyle);
     }
@@ -222,17 +232,27 @@ class ExcelExportService {
     int row,
     int column,
     String value,
-    xl.CellStyle style,
-  ) {
+    xl.CellStyle style, {
+    bool preserveLineBreaks = false,
+  }) {
     sheet.updateCell(
       xl.CellIndex.indexByColumnRow(columnIndex: column, rowIndex: row),
-      _textValue(value),
+      _textValue(value, preserveLineBreaks: preserveLineBreaks),
       cellStyle: style,
     );
   }
 
-  xl.TextCellValue _textValue(String value) {
-    return xl.TextCellValue(_normalizer.displayClean(value));
+  xl.TextCellValue _textValue(String value, {bool preserveLineBreaks = false}) {
+    if (!preserveLineBreaks) {
+      return xl.TextCellValue(_normalizer.displayClean(value));
+    }
+    final normalized = value
+        .replaceAll('\r\n', '\n')
+        .split('\n')
+        .map(_normalizer.displayClean)
+        .where((line) => line.isNotEmpty)
+        .join('\n');
+    return xl.TextCellValue(normalized);
   }
 
   String _principalText(String value) {
