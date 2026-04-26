@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'services/local_teacher_repository.dart';
+import 'state/app_settings_state.dart';
 import 'state/roster_state.dart';
 import 'state/teacher_state.dart';
 import 'ui/screens/roster_home_screen.dart';
@@ -22,9 +23,17 @@ class _NobetciProgramAppState extends State<NobetciProgramApp> {
   late final TeacherState _teacherState = TeacherState(
     repository: LocalTeacherRepository(),
   );
+  late final AppSettingsState _appSettingsState = AppSettingsState();
+
+  @override
+  void initState() {
+    super.initState();
+    _appSettingsState.load();
+  }
 
   @override
   void dispose() {
+    _appSettingsState.dispose();
     _teacherState.dispose();
     _rosterState.dispose();
     super.dispose();
@@ -36,7 +45,11 @@ class _NobetciProgramAppState extends State<NobetciProgramApp> {
       title: 'Nobetci Program',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.build(),
-      home: RosterHomeScreen(state: _rosterState, teacherState: _teacherState),
+      home: RosterHomeScreen(
+        state: _rosterState,
+        teacherState: _teacherState,
+        appSettingsState: _appSettingsState,
+      ),
     );
   }
 }

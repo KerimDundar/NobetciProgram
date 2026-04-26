@@ -1,0 +1,1 @@
+enum PlanningMode { weekly, monthly }

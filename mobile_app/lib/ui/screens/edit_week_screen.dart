@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../models/roster_row.dart';
 import '../../services/cell_teacher_codec.dart';
+import '../../services/week_service.dart';
+import '../../state/app_settings_state.dart';
 import '../../state/roster_state.dart';
 import '../../state/teacher_state.dart';
 import '../widgets/teacher_selection_panel.dart';
@@ -10,10 +12,18 @@ const String _draftMultiTeacherLineBreakToken = r'\n';
 const CellTeacherCodec _draftCellTeacherCodec = CellTeacherCodec();
 
 class EditWeekScreen extends StatefulWidget {
-  const EditWeekScreen({super.key, required this.state, this.teacherState});
+  const EditWeekScreen({
+    super.key,
+    required this.state,
+    this.teacherState,
+    this.appSettingsState,
+    this.testDatePickerOverride,
+  });
 
   final RosterState state;
   final TeacherState? teacherState;
+  final AppSettingsState? appSettingsState;
+  final Future<DateTime?> Function(BuildContext, DateTime)? testDatePickerOverride;
 
   @override
   State<EditWeekScreen> createState() => _EditWeekScreenState();
@@ -176,21 +186,57 @@ class _EditWeekScreenState extends State<EditWeekScreen> {
 
   Future<void> _pickDate({required bool isStart}) async {
     final initialDate = isStart ? _startDate : _endDate;
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: initialDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
+    final override = widget.testDatePickerOverride;
+
+    DateTime? picked;
+    if (override != null) {
+      picked = await override(context, initialDate);
+    } else {
+      picked = await showDatePicker(
+        context: context,
+        initialDate: initialDate,
+        firstDate: DateTime(2000),
+        lastDate: DateTime(2100),
+      );
+    }
     if (picked == null || !mounted) {
       return;
     }
 
+    final candidateDate = DateTime(picked.year, picked.month, picked.day);
+    final candidateStart = isStart ? candidateDate : _startDate;
+    final candidateEnd = isStart ? _endDate : candidateDate;
+
+    final settings = widget.appSettingsState;
+    if (settings != null) {
+      final error = WeekService().validateDateRange(
+        candidateStart,
+        candidateEnd,
+        settings.mode,
+      );
+      if (error != null) {
+        final message = switch (error) {
+          WeekValidationError.tooLong =>
+            'Haftalık modda en fazla 1 hafta seçilebilir.',
+          WeekValidationError.tooShort =>
+            'Aylık modda en az 1 aylık aralık seçilmelidir.',
+          WeekValidationError.invalidRange =>
+            'Başlangıç tarihi bitiş tarihinden sonra olamaz.',
+        };
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(message)));
+        }
+        return;
+      }
+    }
+
     setState(() {
       if (isStart) {
-        _startDate = DateTime(picked.year, picked.month, picked.day);
+        _startDate = candidateDate;
       } else {
-        _endDate = DateTime(picked.year, picked.month, picked.day);
+        _endDate = candidateDate;
       }
       _syncDraftFlags(clearStatus: true);
     });

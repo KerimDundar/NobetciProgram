@@ -3,6 +3,35 @@ import '../models/week.dart';
 import 'roster_service.dart';
 import 'text_normalizer.dart';
 
+const List<String> _displayMonths = [
+  'Ocak',
+  'Şubat',
+  'Mart',
+  'Nisan',
+  'Mayıs',
+  'Haziran',
+  'Temmuz',
+  'Ağustos',
+  'Eylül',
+  'Ekim',
+  'Kasım',
+  'Aralık',
+];
+
+/// Formats a date range for display in export headers.
+/// Same year: "01 Nisan - 30 Nisan 2026"
+/// Cross-year: "29 Aralık 2025 - 25 Ocak 2026"
+String displayRange(DateTime start, DateTime end) {
+  final startDay = start.day.toString().padLeft(2, '0');
+  final endDay = end.day.toString().padLeft(2, '0');
+  final startMonth = _displayMonths[start.month - 1];
+  final endMonth = _displayMonths[end.month - 1];
+  if (start.year == end.year) {
+    return '$startDay $startMonth - $endDay $endMonth ${end.year}';
+  }
+  return '$startDay $startMonth ${start.year} - $endDay $endMonth ${end.year}';
+}
+
 class ExportSnapshot {
   ExportSnapshot._({required List<Week> weeks})
     : weeks = List<Week>.unmodifiable(weeks);

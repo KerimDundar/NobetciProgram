@@ -60,6 +60,13 @@ class ExcelExportService {
         row += 1;
       }
 
+      final range = displayRange(
+        snapshot.weeks.first.startDate,
+        snapshot.weeks.last.endDate,
+      );
+      _writeMergedRow(sheet, row, 0, rosterDayCount, range, _titleStyle);
+      row += 1;
+
       for (final week in snapshot.weeks) {
         row = _appendWeekBlock(sheet, week, row, includeSchoolRow: false);
         row += 1;

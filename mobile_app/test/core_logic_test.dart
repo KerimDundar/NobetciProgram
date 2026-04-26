@@ -20,6 +20,7 @@ import 'package:nobetci_program_mobile/services/roster_service.dart';
 import 'package:nobetci_program_mobile/services/teacher_assignment_lookup_service.dart';
 import 'package:nobetci_program_mobile/services/text_normalizer.dart';
 import 'package:nobetci_program_mobile/services/week_grid_projection_service.dart';
+import 'package:nobetci_program_mobile/models/planning_mode.dart';
 import 'package:nobetci_program_mobile/services/week_service.dart';
 import 'package:nobetci_program_mobile/state/roster_state.dart';
 
@@ -574,6 +575,112 @@ void main() {
         'A',
       ]);
     });
+
+    test('validateDateRange weekly: 6 day diff is valid', () {
+      expect(
+        service.validateDateRange(
+          DateTime(2026, 2, 2),
+          DateTime(2026, 2, 8),
+          PlanningMode.weekly,
+        ),
+        isNull,
+      );
+    });
+
+    test('validateDateRange weekly: 7 day diff is tooLong', () {
+      expect(
+        service.validateDateRange(
+          DateTime(2026, 2, 2),
+          DateTime(2026, 2, 9),
+          PlanningMode.weekly,
+        ),
+        WeekValidationError.tooLong,
+      );
+    });
+
+    test('validateDateRange monthly: 27 day diff is valid', () {
+      expect(
+        service.validateDateRange(
+          DateTime(2026, 4, 1),
+          DateTime(2026, 4, 28),
+          PlanningMode.monthly,
+        ),
+        isNull,
+      );
+    });
+
+    test('validateDateRange monthly: 26 day diff is tooShort', () {
+      expect(
+        service.validateDateRange(
+          DateTime(2026, 4, 1),
+          DateTime(2026, 4, 27),
+          PlanningMode.monthly,
+        ),
+        WeekValidationError.tooShort,
+      );
+    });
+
+    test('validateDateRange startDate after endDate returns invalidRange', () {
+      expect(
+        service.validateDateRange(
+          DateTime(2026, 2, 8),
+          DateTime(2026, 2, 2),
+          PlanningMode.weekly,
+        ),
+        WeekValidationError.invalidRange,
+      );
+    });
+
+    test('generateMonthlyFromWeek returns 4 weeks', () {
+      final base = service.buildWeek(
+        startDate: DateTime(2026, 2, 2),
+        endDate: DateTime(2026, 2, 6),
+        rows: const [],
+      );
+      expect(service.generateMonthlyFromWeek(base), hasLength(4));
+    });
+
+    test('generateMonthlyFromWeek weeks advance 7 days each', () {
+      final base = service.buildWeek(
+        startDate: DateTime(2026, 2, 2),
+        endDate: DateTime(2026, 2, 6),
+        rows: const [],
+      );
+      final weeks = service.generateMonthlyFromWeek(base);
+      expect(weeks[0].startDate, DateTime(2026, 2, 2));
+      expect(weeks[1].startDate, DateTime(2026, 2, 9));
+      expect(weeks[2].startDate, DateTime(2026, 2, 16));
+      expect(weeks[3].startDate, DateTime(2026, 2, 23));
+    });
+
+    test('generateMonthlyFromWeek applies forward rotation each step', () {
+      final base = service.buildWeek(
+        startDate: DateTime(2026, 2, 2),
+        endDate: DateTime(2026, 2, 6),
+        rows: [
+          RosterRow(location: 'L1', teachersByDay: ['A', '', '', '', '']),
+          RosterRow(location: 'L2', teachersByDay: ['B', '', '', '', '']),
+        ],
+      );
+      final weeks = service.generateMonthlyFromWeek(base);
+      expect(weeks[0].rows[0].teachersByDay[0], 'A');
+      expect(weeks[1].rows[0].teachersByDay[0], 'B');
+      expect(weeks[2].rows[0].teachersByDay[0], 'A');
+      expect(weeks[3].rows[0].teachersByDay[0], 'B');
+    });
+
+    test('generateMonthlyFromWeek does not mutate input week', () {
+      final base = service.buildWeek(
+        startDate: DateTime(2026, 2, 2),
+        endDate: DateTime(2026, 2, 6),
+        rows: [
+          RosterRow(location: 'L1', teachersByDay: ['A', '', '', '', '']),
+        ],
+      );
+      final originalRows = base.rows;
+      service.generateMonthlyFromWeek(base);
+      expect(base.rows, same(originalRows));
+    });
   });
 
   group('WeekGridProjectionService', () {
@@ -783,6 +890,14 @@ void main() {
         expect(state.currentWeek, same(originalWeek));
       },
     );
+
+    test('generateMonthlyWeeks produces 4 weeks starting from currentWeek', () {
+      final state = RosterState.initial();
+      expect(state.generatedMonthlyWeeks, isNull);
+      state.generateMonthlyWeeks();
+      expect(state.generatedMonthlyWeeks, hasLength(4));
+      expect(state.generatedMonthlyWeeks!.first, same(state.currentWeek));
+    });
 
     test('saveWeekDraft normalizes and skips fully empty rows', () {
       final state = RosterState.initial();
@@ -2192,6 +2307,124 @@ void main() {
       } finally {
         await tempDir.delete(recursive: true);
       }
+    });
+
+    group('Multi-week (monthly) export', () {
+      const snapshotService = ExportSnapshotService();
+      const tableService = ExportTableService();
+      const excelService = ExcelExportService();
+
+      List<Week> fourWeeks() {
+        final base = DateTime(2026, 4, 1);
+        return List<Week>.generate(4, (i) {
+          return Week(
+            title: 'W${i + 1}',
+            startDate: base.add(Duration(days: i * 7)),
+            endDate: base.add(Duration(days: i * 7 + 4)),
+            schoolName: 'Okul',
+            principalName: 'Müdür',
+            rows: [
+              RosterRow(
+                location: 'Bahçe',
+                teachersByDay: ['Ali', '', '', '', ''],
+              ),
+            ],
+          );
+        });
+      }
+
+      test('ExportSnapshot holds 4 weeks with correct flags', () {
+        final snapshot = snapshotService.fromPreviewWeeks(fourWeeks());
+        expect(snapshot.weeks, hasLength(4));
+        expect(snapshot.isSingleWeek, isFalse);
+        expect(snapshot.isMultiWeek, isTrue);
+        expect(snapshot.isEmpty, isFalse);
+        expect(snapshot.weeks.map((w) => w.title), ['W1', 'W2', 'W3', 'W4']);
+      });
+
+      test('ExportTableService produces 4 independent tables in order', () {
+        final weeks = fourWeeks();
+        final tables = weeks.map(tableService.buildWeekTable).toList();
+        expect(tables, hasLength(4));
+        for (final table in tables) {
+          expect(table.bodyRows, hasLength(1));
+          expect(table.bodyRows.first.first, 'Bahçe');
+        }
+      });
+
+      test('PDF export with 4 weeks produces bytes on 1 page', () async {
+        final snapshot = snapshotService.fromPreviewWeeks(fourWeeks());
+        final bytes = await const PdfExportService().buildPdf(snapshot);
+        expect(bytes, isNotEmpty);
+        expect(bytes.take(4), [37, 80, 68, 70]);
+        expect(_pdfPageCount(bytes), 1);
+      });
+
+      test('Excel export with 4 weeks preserves all 4 in Nobet_Data sheet', () {
+        final snapshot = snapshotService.fromPreviewWeeks(fourWeeks());
+        final bytes = excelService.buildWorkbook(snapshot);
+        expect(bytes, isNotEmpty);
+        final workbook = xl.Excel.decodeBytes(bytes);
+        final dataSheet = workbook.tables[ExcelExportService.dataSheetName]!;
+
+        // Each week block = 7 header rows + 1 data row + 1 separator = 10 rows.
+        // Starts at row 1 (row 0 = EXPORT_DATA_VERSION).
+        for (var i = 0; i < 4; i++) {
+          final weekStart = 1 + i * 10;
+          expect(_cellText(dataSheet, weekStart, 0), 'WEEK_INDEX');
+          expect(_cellText(dataSheet, weekStart, 1), '${i + 1}');
+          expect(_cellText(dataSheet, weekStart + 1, 0), 'TITLE');
+          expect(_cellText(dataSheet, weekStart + 1, 1), 'W${i + 1}');
+        }
+      });
+
+      test('displayRange same year: "01 Nisan - 30 Nisan 2026"', () {
+        final result = displayRange(DateTime(2026, 4, 1), DateTime(2026, 4, 30));
+        expect(result, '01 Nisan - 30 Nisan 2026');
+      });
+
+      test('displayRange cross-year: "29 Aralık 2025 - 25 Ocak 2026"', () {
+        final result =
+            displayRange(DateTime(2025, 12, 29), DateTime(2026, 1, 25));
+        expect(result, '29 Aralık 2025 - 25 Ocak 2026');
+      });
+
+      test('multi-week Excel range row appears on Nobet sheet', () {
+        final snapshot = snapshotService.fromPreviewWeeks(fourWeeks());
+        final bytes = excelService.buildWorkbook(snapshot);
+        final workbook = xl.Excel.decodeBytes(bytes);
+        final sheet = workbook.tables[ExcelExportService.sheetName]!;
+        // fourWeeks: schoolName='Okul' → row 0=school, row 1=range, row 2=W1 title...
+        final rangeText = _cellText(sheet, 1, 0);
+        expect(rangeText, contains('Nisan'));
+        expect(rangeText, contains('2026'));
+      });
+
+      test('single-week Excel export header unchanged (no range row)', () {
+        final week = Week(
+          title: '01.04.2026 - 05.04.2026',
+          startDate: DateTime(2026, 4, 1),
+          endDate: DateTime(2026, 4, 5),
+          rows: [
+            RosterRow(location: 'Bahçe', teachersByDay: ['Ali', '', '', '', '']),
+          ],
+        );
+        final snapshot = snapshotService.fromCurrentWeek(week);
+        final bytes = excelService.buildWorkbook(snapshot);
+        final workbook = xl.Excel.decodeBytes(bytes);
+        final sheet = workbook.tables[ExcelExportService.sheetName]!;
+        // row 0 = title, row 1 = NOBET YERI header
+        expect(_cellText(sheet, 0, 0), '01.04.2026 - 05.04.2026');
+        expect(_cellText(sheet, 1, 0), 'NOBET YERI');
+      });
+
+      test('multi-week PDF export produces non-empty bytes and range in content',
+          () async {
+        final snapshot = snapshotService.fromPreviewWeeks(fourWeeks());
+        final bytes = await const PdfExportService().buildPdf(snapshot);
+        expect(bytes, isNotEmpty);
+        expect(bytes.take(4), [37, 80, 68, 70]);
+      });
     });
   });
 

@@ -97,6 +97,7 @@ class PdfExportService {
       weeks,
       (week) => week.principalName,
     );
+    final range = displayRange(weeks.first.startDate, weeks.last.endDate);
 
     for (var start = 0; start < weeks.length; start += 4) {
       final pageWeeks = weeks.skip(start).take(4).toList(growable: false);
@@ -109,6 +110,7 @@ class PdfExportService {
           build: (context) {
             final children = <pw.Widget>[
               ..._schoolLine(schoolName, font, layout.fontSize),
+              ..._rangeLine(range, font, layout.fontSize),
             ];
 
             for (var index = 0; index < pageWeeks.length; index++) {
@@ -144,7 +146,7 @@ class PdfExportService {
     final tableRows = weeks.fold<int>(0, (total, week) {
       return total + _weekRowCount(week);
     });
-    final metadataRows = (schoolName.isEmpty ? 0 : 1) + 1;
+    final metadataRows = (schoolName.isEmpty ? 0 : 1) + 1 + 1; // + range
     final spacerHeight = 3 * (weeks.length - 1);
     final maxRowHeight =
         ((availableHeight - spacerHeight) / (tableRows + metadataRows)).floor();
@@ -354,6 +356,18 @@ class PdfExportService {
           fontSize: fontSize + 1,
           fontWeight: pw.FontWeight.bold,
         ),
+      ),
+      pw.SizedBox(height: PdfPageFormat.mm),
+    ];
+  }
+
+  List<pw.Widget> _rangeLine(String range, pw.Font font, double fontSize) {
+    if (range.isEmpty) return const [];
+    return [
+      pw.Text(
+        range,
+        textAlign: pw.TextAlign.center,
+        style: pw.TextStyle(font: font, fontSize: fontSize),
       ),
       pw.SizedBox(height: PdfPageFormat.mm),
     ];

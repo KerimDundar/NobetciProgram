@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../models/planning_mode.dart';
 import '../../models/week.dart';
 import '../../services/export_file_service.dart';
 import '../../services/grid_cell_status_service.dart';
 import '../../services/week_grid_projection_service.dart';
+import '../../state/app_settings_state.dart';
 import '../../state/roster_state.dart';
 import '../../state/teacher_state.dart';
 import '../theme/app_theme.dart';
@@ -15,11 +17,13 @@ class RosterHomeScreen extends StatelessWidget {
     super.key,
     required this.state,
     this.teacherState,
+    this.appSettingsState,
     this.exportFileService = const ExportFileService(),
   });
 
   final RosterState state;
   final TeacherState? teacherState;
+  final AppSettingsState? appSettingsState;
   final ExportFileService exportFileService;
 
   @override
@@ -52,7 +56,7 @@ class RosterHomeScreen extends StatelessWidget {
               ),
               IconButton(
                 tooltip: 'Sonraki hafta',
-                onPressed: state.goToNextWeek,
+                onPressed: () => _onNextWeek(context),
                 icon: const Icon(Icons.arrow_downward),
               ),
             ],
@@ -67,9 +71,30 @@ class RosterHomeScreen extends StatelessWidget {
                 const SizedBox(height: 16),
                 _WeekActions(
                   onPrevious: state.goToPreviousWeek,
-                  onNext: state.goToNextWeek,
+                  onNext: () => _onNextWeek(context),
                 ),
                 const SizedBox(height: 12),
+                if (appSettingsState != null)
+                  AnimatedBuilder(
+                    animation: appSettingsState!,
+                    builder: (_, child) {
+                      if (appSettingsState!.mode != PlanningMode.weekly) {
+                        return const SizedBox.shrink();
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            key: const Key('generate-monthly-button'),
+                            onPressed: () => _generateMonthly(context),
+                            icon: const Icon(Icons.calendar_view_month),
+                            label: const Text('Aylık tablo oluştur'),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 _ExportActions(
                   state: state,
                   exportFileService: exportFileService,
@@ -90,8 +115,11 @@ class RosterHomeScreen extends StatelessWidget {
   Future<void> _openEditScreen(BuildContext context) async {
     final saved = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
-        builder: (_) =>
-            EditWeekScreen(state: state, teacherState: teacherState),
+        builder: (_) => EditWeekScreen(
+          state: state,
+          teacherState: teacherState,
+          appSettingsState: appSettingsState,
+        ),
       ),
     );
     if (saved != true || !context.mounted) {
@@ -120,6 +148,50 @@ class RosterHomeScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _generateMonthly(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Aylık tablo oluştur'),
+        content: const Text(
+          'Mevcut haftadan başlayarak 4 haftalık aylık tablo oluşturulsun mu?',
+        ),
+        actions: [
+          TextButton(
+            key: const Key('monthly-gen-cancel'),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('İptal'),
+          ),
+          FilledButton(
+            key: const Key('monthly-gen-confirm'),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Oluştur'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+    state.generateMonthlyWeeks();
+  }
+
+  Future<void> _onNextWeek(BuildContext context) async {
+    final settings = appSettingsState;
+    if (settings == null) {
+      state.goToNextWeek();
+      return;
+    }
+
+    final selected = await showDialog<PlanningMode>(
+      context: context,
+      builder: (_) => const _PlanningModeDialog(),
+    );
+
+    if (selected == null || !context.mounted) return;
+    await settings.setMode(selected);
+    state.goToNextWeek();
   }
 }
 
@@ -598,6 +670,34 @@ class _WeekHeader extends StatelessWidget {
     final day = date.day.toString().padLeft(2, '0');
     final month = date.month.toString().padLeft(2, '0');
     return '$day.$month.${date.year}';
+  }
+}
+
+class _PlanningModeDialog extends StatelessWidget {
+  const _PlanningModeDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Planlama türü seçin'),
+      actions: [
+        TextButton(
+          key: const Key('planning-mode-cancel'),
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('İptal'),
+        ),
+        TextButton(
+          key: const Key('planning-mode-weekly'),
+          onPressed: () => Navigator.of(context).pop(PlanningMode.weekly),
+          child: const Text('Haftalık plan'),
+        ),
+        TextButton(
+          key: const Key('planning-mode-monthly'),
+          onPressed: () => Navigator.of(context).pop(PlanningMode.monthly),
+          child: const Text('Aylık plan'),
+        ),
+      ],
+    );
   }
 }
 

@@ -37,9 +37,11 @@ class RosterState extends ChangeNotifier {
   static const String _multiTeacherLineBreakToken = r'\n';
   Week _currentWeek;
   RosterCellSelection? _selectedCell;
+  List<Week>? _generatedMonthlyWeeks;
 
   Week get currentWeek => _currentWeek;
   RosterCellSelection? get selectedCell => _selectedCell;
+  List<Week>? get generatedMonthlyWeeks => _generatedMonthlyWeeks;
   List<Teacher> get teachers => _teacherService.all();
   ExportSnapshot get exportSnapshot =>
       _exportSnapshotService.fromCurrentWeek(_currentWeek);
@@ -75,6 +77,11 @@ class RosterState extends ChangeNotifier {
         principalName: 'Müdür',
       ),
     );
+  }
+
+  void generateMonthlyWeeks() {
+    _generatedMonthlyWeeks = _weekService.generateMonthlyFromWeek(_currentWeek);
+    notifyListeners();
   }
 
   void goToNextWeek() {
