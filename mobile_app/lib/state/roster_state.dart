@@ -43,8 +43,13 @@ class RosterState extends ChangeNotifier {
   RosterCellSelection? get selectedCell => _selectedCell;
   List<Week>? get generatedMonthlyWeeks => _generatedMonthlyWeeks;
   List<Teacher> get teachers => _teacherService.all();
-  ExportSnapshot get exportSnapshot =>
-      _exportSnapshotService.fromCurrentWeek(_currentWeek);
+  ExportSnapshot get exportSnapshot {
+    final monthly = _generatedMonthlyWeeks;
+    if (monthly != null && monthly.isNotEmpty) {
+      return _exportSnapshotService.fromPreviewWeeks(monthly);
+    }
+    return _exportSnapshotService.fromCurrentWeek(_currentWeek);
+  }
 
   factory RosterState.initial() {
     final weekService = WeekService();

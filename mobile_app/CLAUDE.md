@@ -40,3 +40,4 @@ All business comparisons use TextNormalizer.canonical(). Never String.toUpperCas
 - .claude/agents/teacher.md        — Teacher model, TeacherRepository, TeacherState, picker UI
 - .claude/agents/grid-ui.md        — WeekGridProjection, GridCellStatus, EditWeekScreen
 - .claude/agents/test-validation.md — test coverage map, test commands
+- .claude/agents/flutter_dev.md    — post-update emulator refresh rule (clean build, reinstall, rapor formatı)

@@ -110,7 +110,7 @@ void main() {
       SharedPreferences.setMockInitialValues({});
     });
 
-    testWidgets('modal opens when Sonraki Hafta is tapped', (tester) async {
+    testWidgets('Sonraki Hafta butonu dialog açmaz', (tester) async {
       _useTallTestView(tester);
       final state = RosterState.initial();
       final appSettings = AppSettingsState();
@@ -125,6 +125,26 @@ void main() {
       );
 
       await tester.tap(find.text('Sonraki Hafta'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Planlama türü seçin'), findsNothing);
+    });
+
+    testWidgets('Planlama Türü butonu dialog açar', (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial();
+      final appSettings = AppSettingsState();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: RosterHomeScreen(
+            state: state,
+            appSettingsState: appSettings,
+          ),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('planning-mode-button')));
       await tester.pumpAndSettle();
 
       expect(find.text('Planlama türü seçin'), findsOneWidget);
@@ -145,7 +165,7 @@ void main() {
         ),
       );
 
-      await tester.tap(find.text('Sonraki Hafta'));
+      await tester.tap(find.byKey(const Key('planning-mode-button')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('planning-mode-weekly')));
       await tester.pumpAndSettle();
@@ -167,7 +187,7 @@ void main() {
         ),
       );
 
-      await tester.tap(find.text('Sonraki Hafta'));
+      await tester.tap(find.byKey(const Key('planning-mode-button')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('planning-mode-monthly')));
       await tester.pumpAndSettle();
@@ -175,7 +195,7 @@ void main() {
       expect(appSettings.mode, PlanningMode.monthly);
     });
 
-    testWidgets('iptal hafta oluşturmayı engeller', (tester) async {
+    testWidgets('mode değişimi currentWeek değiştirmez', (tester) async {
       _useTallTestView(tester);
       final state = RosterState.initial();
       final appSettings = AppSettingsState();
@@ -190,12 +210,69 @@ void main() {
         ),
       );
 
-      await tester.tap(find.text('Sonraki Hafta'));
+      await tester.tap(find.byKey(const Key('planning-mode-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('planning-mode-monthly')));
+      await tester.pumpAndSettle();
+
+      expect(state.currentWeek.title, initialTitle);
+    });
+
+    testWidgets('iptal edilirse mode değişmez', (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial();
+      final appSettings = AppSettingsState();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: RosterHomeScreen(
+            state: state,
+            appSettingsState: appSettings,
+          ),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('planning-mode-button')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('planning-mode-cancel')));
       await tester.pumpAndSettle();
 
-      expect(state.currentWeek.title, initialTitle);
+      expect(appSettings.mode, PlanningMode.weekly);
+    });
+
+    testWidgets('sağ üst yukarı/aşağı ikonları yok', (tester) async {
+      _useTallTestView(tester);
+      await tester.pumpWidget(const NobetciProgramApp());
+
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.byIcon(Icons.arrow_upward),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.byIcon(Icons.arrow_downward),
+        ),
+        findsNothing,
+      );
+    });
+
+    testWidgets('Sonraki Hafta butonu haftayı ilerletir', (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial();
+      final initialTitle = state.currentWeek.title;
+
+      await tester.pumpWidget(
+        MaterialApp(home: RosterHomeScreen(state: state)),
+      );
+
+      await tester.tap(find.text('Sonraki Hafta'));
+      await tester.pumpAndSettle();
+
+      expect(state.currentWeek.title, isNot(initialTitle));
     });
   });
 
@@ -287,6 +364,33 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(state.generatedMonthlyWeeks, hasLength(4));
+    });
+
+    testWidgets('confirm shows success snackbar', (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial();
+      final appSettings = AppSettingsState();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: RosterHomeScreen(
+            state: state,
+            appSettingsState: appSettings,
+          ),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('generate-monthly-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('monthly-gen-confirm')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'Aylık tablo oluşturuldu. Export ederek çıktıyı alabilirsiniz.',
+        ),
+        findsOneWidget,
+      );
     });
   });
 

@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(C:/Users/BoruGurduu/AppData/Local/Android/Sdk/emulator/emulator.exe -avd Pixel_7_API_36)",
+      "Bash(C:/Users/BoruGurduu/.puro/envs/stable/flutter/bin/flutter.bat run *)",
+      "Bash(C:/Users/BoruGurduu/.puro/envs/stable/flutter/bin/flutter.bat clean *)",
+      "Bash(C:/Users/BoruGurduu/.puro/envs/stable/flutter/bin/flutter.bat pub *)",
+      "Bash(C:/Users/BoruGurduu/.puro/envs/stable/flutter/bin/flutter.bat test *)",
+      "Bash(C:/Users/BoruGurduu/.puro/envs/stable/flutter/bin/flutter.bat analyze *)",
+      "Bash(C:/Users/BoruGurduu/AppData/Local/Android/Sdk/platform-tools/adb.exe uninstall *)",
+      "Bash(C:/Users/BoruGurduu/AppData/Local/Android/Sdk/platform-tools/adb.exe shell *)"
+    ]
+  }
+}

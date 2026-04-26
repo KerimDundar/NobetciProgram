@@ -205,6 +205,34 @@ void main() {
       expect(result.first.dayIndex, 0);
       expect(result.first.location, 'Bahce');
     });
+
+    test('lookup without dayIndex returns assignments across all days', () {
+      final week = Week(
+        title: 'T1',
+        startDate: DateTime(2026, 2, 2),
+        endDate: DateTime(2026, 2, 6),
+        rows: [
+          RosterRow(
+            location: 'Bahce',
+            teachersByDay: ['Ali', '', 'Ali', '', 'Ali'],
+          ),
+        ],
+      );
+
+      final all = service.assignmentsFromWeek(
+        week: week,
+        teacherName: 'Ali',
+      );
+      expect(all, hasLength(3));
+      expect(all.map((e) => e.dayIndex).toList(), [0, 2, 4]);
+
+      final dayZeroOnly = service.assignmentsFromWeek(
+        week: week,
+        teacherName: 'Ali',
+        dayIndex: 0,
+      );
+      expect(dayZeroOnly, hasLength(1));
+    });
   });
 
   group('DuplicateLocationService', () {
@@ -924,6 +952,40 @@ void main() {
         '',
         '',
       ]);
+    });
+  });
+
+  group('RosterState exportSnapshot', () {
+    test('exportSnapshot uses currentWeek when no monthly weeks generated', () {
+      final state = RosterState.initial();
+      final snapshot = state.exportSnapshot;
+      expect(snapshot.isSingleWeek, isTrue);
+      expect(snapshot.weeks.single.title, state.currentWeek.title);
+    });
+
+    test('exportSnapshot uses generatedMonthlyWeeks after generateMonthlyWeeks()',
+        () {
+      final state = RosterState.initial();
+      state.generateMonthlyWeeks();
+      final snapshot = state.exportSnapshot;
+      expect(snapshot.isMultiWeek, isTrue);
+      expect(snapshot.weeks, hasLength(4));
+    });
+
+    test('generatedMonthlyWeeks starts from currentWeek and advances 7 days',
+        () {
+      final state = RosterState.initial();
+      state.generateMonthlyWeeks();
+      final weeks = state.generatedMonthlyWeeks!;
+      expect(weeks[0].startDate, state.currentWeek.startDate);
+      expect(
+        weeks[1].startDate,
+        weeks[0].startDate.add(const Duration(days: 7)),
+      );
+      expect(
+        weeks[3].startDate,
+        weeks[0].startDate.add(const Duration(days: 21)),
+      );
     });
   });
 

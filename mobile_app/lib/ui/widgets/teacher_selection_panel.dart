@@ -162,7 +162,6 @@ class _TeacherSelectionPanelState extends State<TeacherSelectionPanel> {
     final assignments = _assignmentLookupService.assignmentsFromWeek(
       week: week,
       teacherName: teacher.name,
-      dayIndex: widget.assignmentDayIndex,
     );
 
     if (!mounted) {
@@ -199,7 +198,7 @@ class _TeacherSelectionPanelState extends State<TeacherSelectionPanel> {
                 const SizedBox(height: 12),
                 if (assignments.isEmpty)
                   const Text(
-                    'Bu hafta gorev atamasi yok.',
+                    'Bu öğretmenin bu hafta görev kaydı bulunmuyor.',
                     key: ValueKey('teacher-assignment-empty'),
                   )
                 else
@@ -218,9 +217,7 @@ class _TeacherSelectionPanelState extends State<TeacherSelectionPanel> {
                             'teacher-assignment-item-${teacher.id}-$index',
                           ),
                           dense: true,
-                          leading: const Icon(Icons.place_outlined),
-                          title: Text(location),
-                          subtitle: Text(assignment.dayName),
+                          title: Text('${assignment.dayName} — $location'),
                         );
                       },
                     ),

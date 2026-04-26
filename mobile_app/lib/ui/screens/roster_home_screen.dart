@@ -49,16 +49,6 @@ class RosterHomeScreen extends StatelessWidget {
                 onPressed: () => _openEditScreen(context),
                 icon: const Icon(Icons.edit),
               ),
-              IconButton(
-                tooltip: 'Önceki hafta',
-                onPressed: state.goToPreviousWeek,
-                icon: const Icon(Icons.arrow_upward),
-              ),
-              IconButton(
-                tooltip: 'Sonraki hafta',
-                onPressed: () => _onNextWeek(context),
-                icon: const Icon(Icons.arrow_downward),
-              ),
             ],
           ),
           body: SafeArea(
@@ -71,7 +61,7 @@ class RosterHomeScreen extends StatelessWidget {
                 const SizedBox(height: 16),
                 _WeekActions(
                   onPrevious: state.goToPreviousWeek,
-                  onNext: () => _onNextWeek(context),
+                  onNext: state.goToNextWeek,
                 ),
                 const SizedBox(height: 12),
                 if (appSettingsState != null)
@@ -99,6 +89,18 @@ class RosterHomeScreen extends StatelessWidget {
                   state: state,
                   exportFileService: exportFileService,
                 ),
+                if (appSettingsState != null) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      key: const Key('planning-mode-button'),
+                      onPressed: () => _openPlanningModeDialog(context),
+                      icon: const Icon(Icons.tune),
+                      label: const Text('Planlama Türü'),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 if (week.rows.isEmpty) ...[
                   const _EmptyRosterCard(),
@@ -175,14 +177,19 @@ class RosterHomeScreen extends StatelessWidget {
 
     if (confirmed != true || !context.mounted) return;
     state.generateMonthlyWeeks();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Aylık tablo oluşturuldu. Export ederek çıktıyı alabilirsiniz.',
+        ),
+      ),
+    );
   }
 
-  Future<void> _onNextWeek(BuildContext context) async {
+  Future<void> _openPlanningModeDialog(BuildContext context) async {
     final settings = appSettingsState;
-    if (settings == null) {
-      state.goToNextWeek();
-      return;
-    }
+    if (settings == null) return;
 
     final selected = await showDialog<PlanningMode>(
       context: context,
@@ -191,7 +198,6 @@ class RosterHomeScreen extends StatelessWidget {
 
     if (selected == null || !context.mounted) return;
     await settings.setMode(selected);
-    state.goToNextWeek();
   }
 }
 
