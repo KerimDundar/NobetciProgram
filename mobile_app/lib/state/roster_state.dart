@@ -13,6 +13,8 @@ import '../services/week_service.dart';
 class RosterState extends ChangeNotifier {
   RosterState({
     required Week currentWeek,
+    bool hasActiveRoster = false,
+    String projectName = '',
     WeekService? weekService,
     RosterService? rosterService,
     TeacherService? teacherService,
@@ -20,6 +22,8 @@ class RosterState extends ChangeNotifier {
     TextNormalizer? textNormalizer,
     ExportSnapshotService? exportSnapshotService,
   }) : _currentWeek = currentWeek,
+       _hasActiveRoster = hasActiveRoster,
+       _projectName = projectName,
        _rosterService = rosterService ?? const RosterService(),
        _teacherService = teacherService ?? TeacherService(),
        _cellTeacherCodec = cellTeacherCodec ?? const CellTeacherCodec(),
@@ -36,10 +40,14 @@ class RosterState extends ChangeNotifier {
   final ExportSnapshotService _exportSnapshotService;
   static const String _multiTeacherLineBreakToken = r'\n';
   Week _currentWeek;
+  bool _hasActiveRoster;
+  String _projectName;
   RosterCellSelection? _selectedCell;
   List<Week>? _generatedMonthlyWeeks;
 
   Week get currentWeek => _currentWeek;
+  bool get hasActiveRoster => _hasActiveRoster;
+  String get projectName => _projectName;
   RosterCellSelection? get selectedCell => _selectedCell;
   List<Week>? get generatedMonthlyWeeks => _generatedMonthlyWeeks;
   List<Teacher> get teachers => _teacherService.all();
@@ -49,6 +57,20 @@ class RosterState extends ChangeNotifier {
       return _exportSnapshotService.fromPreviewWeeks(monthly);
     }
     return _exportSnapshotService.fromCurrentWeek(_currentWeek);
+  }
+
+  factory RosterState.blank() {
+    final weekService = WeekService();
+    return RosterState(
+      weekService: weekService,
+      currentWeek: weekService.buildWeek(
+        startDate: DateTime(2026, 2, 2),
+        endDate: DateTime(2026, 2, 6),
+        rows: const [],
+        schoolName: '',
+        principalName: '',
+      ),
+    );
   }
 
   factory RosterState.initial() {
@@ -74,6 +96,7 @@ class RosterState extends ChangeNotifier {
       weekService: weekService,
       rosterService: const RosterService(),
       teacherService: TeacherService(),
+      hasActiveRoster: true,
       currentWeek: weekService.buildWeek(
         startDate: startDate,
         endDate: endDate,
@@ -82,6 +105,11 @@ class RosterState extends ChangeNotifier {
         principalName: 'Müdür',
       ),
     );
+  }
+
+  void setProjectMetadata({required String name}) {
+    _projectName = name;
+    notifyListeners();
   }
 
   void generateMonthlyWeeks() {
@@ -291,6 +319,7 @@ class RosterState extends ChangeNotifier {
         schoolName: schoolName,
         principalName: principalName,
       );
+      _hasActiveRoster = true;
       notifyListeners();
       return null;
     } on FormatException catch (error) {

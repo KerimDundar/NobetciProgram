@@ -19,7 +19,7 @@ class NobetciProgramApp extends StatefulWidget {
 }
 
 class _NobetciProgramAppState extends State<NobetciProgramApp> {
-  late final RosterState _rosterState = RosterState.initial();
+  late final RosterState _rosterState = RosterState.blank();
   late final TeacherState _teacherState = TeacherState(
     repository: LocalTeacherRepository(),
   );

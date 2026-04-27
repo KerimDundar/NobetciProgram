@@ -4,7 +4,7 @@ import '../models/week.dart';
 import 'roster_service.dart';
 import 'text_normalizer.dart';
 
-enum WeekValidationError { tooLong, tooShort, invalidRange }
+enum WeekValidationError { tooLong, invalidRange, notFullMonth }
 
 const int weekStepDays = 7;
 
@@ -97,17 +97,33 @@ class WeekService {
     return List.unmodifiable(weeks);
   }
 
+  DateTime monthStart(DateTime date) => DateTime(date.year, date.month, 1);
+
+  DateTime monthEnd(DateTime date) => DateTime(date.year, date.month + 1, 0);
+
+  WeekDateRange currentMonthRange(DateTime now) =>
+      WeekDateRange(startDate: monthStart(now), endDate: monthEnd(now));
+
   WeekValidationError? validateDateRange(
     DateTime startDate,
     DateTime endDate,
     PlanningMode mode,
   ) {
-    final diff = endDate.difference(startDate).inDays;
-    if (diff < 0) return WeekValidationError.invalidRange;
+    if (endDate.isBefore(startDate)) return WeekValidationError.invalidRange;
     return switch (mode) {
-      PlanningMode.weekly => diff >= 7 ? WeekValidationError.tooLong : null,
-      PlanningMode.monthly => diff < 27 ? WeekValidationError.tooShort : null,
+      PlanningMode.weekly =>
+        endDate.difference(startDate).inDays >= 7
+            ? WeekValidationError.tooLong
+            : null,
+      PlanningMode.monthly => _validateMonthly(startDate, endDate),
     };
+  }
+
+  WeekValidationError? _validateMonthly(DateTime startDate, DateTime endDate) {
+    if (startDate != monthStart(startDate) || endDate != monthEnd(startDate)) {
+      return WeekValidationError.notFullMonth;
+    }
+    return null;
   }
 
   Week previousWeek(Week current) {

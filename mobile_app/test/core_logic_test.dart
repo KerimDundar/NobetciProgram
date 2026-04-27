@@ -626,26 +626,97 @@ void main() {
       );
     });
 
-    test('validateDateRange monthly: 27 day diff is valid', () {
+    test('validateDateRange monthly: full month Feb is valid', () {
       expect(
         service.validateDateRange(
-          DateTime(2026, 4, 1),
-          DateTime(2026, 4, 28),
+          DateTime(2026, 2, 1),
+          DateTime(2026, 2, 28),
           PlanningMode.monthly,
         ),
         isNull,
       );
     });
 
-    test('validateDateRange monthly: 26 day diff is tooShort', () {
+    test('validateDateRange monthly: full month April is valid', () {
       expect(
         service.validateDateRange(
           DateTime(2026, 4, 1),
-          DateTime(2026, 4, 27),
+          DateTime(2026, 4, 30),
           PlanningMode.monthly,
         ),
-        WeekValidationError.tooShort,
+        isNull,
       );
+    });
+
+    test('validateDateRange monthly: non-first-day start is notFullMonth', () {
+      expect(
+        service.validateDateRange(
+          DateTime(2026, 2, 2),
+          DateTime(2026, 2, 28),
+          PlanningMode.monthly,
+        ),
+        WeekValidationError.notFullMonth,
+      );
+    });
+
+    test('validateDateRange monthly: non-last-day end is notFullMonth', () {
+      expect(
+        service.validateDateRange(
+          DateTime(2026, 2, 1),
+          DateTime(2026, 2, 27),
+          PlanningMode.monthly,
+        ),
+        WeekValidationError.notFullMonth,
+      );
+    });
+
+    test('validateDateRange monthly: cross-month range is notFullMonth', () {
+      expect(
+        service.validateDateRange(
+          DateTime(2026, 2, 1),
+          DateTime(2026, 3, 31),
+          PlanningMode.monthly,
+        ),
+        WeekValidationError.notFullMonth,
+      );
+    });
+
+    test('validateDateRange monthly: cross-month start/end is notFullMonth', () {
+      expect(
+        service.validateDateRange(
+          DateTime(2026, 2, 1),
+          DateTime(2026, 3, 1),
+          PlanningMode.monthly,
+        ),
+        WeekValidationError.notFullMonth,
+      );
+    });
+
+    test('monthStart returns first of month', () {
+      expect(service.monthStart(DateTime(2026, 2, 15)), DateTime(2026, 2, 1));
+      expect(service.monthStart(DateTime(2026, 4, 10)), DateTime(2026, 4, 1));
+      expect(service.monthStart(DateTime(2026, 12, 31)), DateTime(2026, 12, 1));
+    });
+
+    test('monthEnd returns last day of month', () {
+      expect(service.monthEnd(DateTime(2026, 2, 1)), DateTime(2026, 2, 28));
+      expect(service.monthEnd(DateTime(2026, 4, 1)), DateTime(2026, 4, 30));
+      expect(service.monthEnd(DateTime(2028, 2, 1)), DateTime(2028, 2, 29));
+      expect(service.monthEnd(DateTime(2026, 12, 1)), DateTime(2026, 12, 31));
+    });
+
+    test('currentMonthRange returns full month for given date', () {
+      final r1 = service.currentMonthRange(DateTime(2026, 2, 15));
+      expect(r1.startDate, DateTime(2026, 2, 1));
+      expect(r1.endDate, DateTime(2026, 2, 28));
+
+      final r2 = service.currentMonthRange(DateTime(2026, 4, 10));
+      expect(r2.startDate, DateTime(2026, 4, 1));
+      expect(r2.endDate, DateTime(2026, 4, 30));
+
+      final r3 = service.currentMonthRange(DateTime(2028, 2, 10));
+      expect(r3.startDate, DateTime(2028, 2, 1));
+      expect(r3.endDate, DateTime(2028, 2, 29));
     });
 
     test('validateDateRange startDate after endDate returns invalidRange', () {

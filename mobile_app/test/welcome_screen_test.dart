@@ -7,7 +7,7 @@ import 'package:nobetci_program_mobile/state/app_settings_state.dart';
 import 'package:nobetci_program_mobile/state/roster_state.dart';
 import 'package:nobetci_program_mobile/state/teacher_state.dart';
 import 'package:nobetci_program_mobile/ui/screens/welcome_screen.dart';
-import 'package:nobetci_program_mobile/ui/screens/roster_home_screen.dart';
+import 'package:nobetci_program_mobile/ui/screens/projects_screen.dart';
 import 'package:nobetci_program_mobile/ui/theme/app_theme.dart';
 
 Widget _buildWelcome() {
@@ -46,12 +46,12 @@ void main() {
       expect(find.text('Excel Aktarım'), findsOneWidget);
     });
 
-    testWidgets('başla butonuna tıklayınca RosterHomeScreen açılır',
+    testWidgets('başla butonuna tıklayınca ProjectsScreen açılır',
         (tester) async {
       await tester.pumpWidget(_buildWelcome());
       await tester.tap(find.byKey(const Key('welcome-start-button')));
       await tester.pumpAndSettle();
-      expect(find.byType(RosterHomeScreen), findsOneWidget);
+      expect(find.byType(ProjectsScreen), findsOneWidget);
     });
   });
 }

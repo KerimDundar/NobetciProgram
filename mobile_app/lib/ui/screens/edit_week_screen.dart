@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../models/planning_mode.dart';
 import '../../models/roster_row.dart';
 import '../../services/cell_teacher_codec.dart';
 import '../../services/week_service.dart';
@@ -17,12 +18,16 @@ class EditWeekScreen extends StatefulWidget {
     required this.state,
     this.teacherState,
     this.appSettingsState,
+    this.initialStartDate,
+    this.initialEndDate,
     this.testDatePickerOverride,
   });
 
   final RosterState state;
   final TeacherState? teacherState;
   final AppSettingsState? appSettingsState;
+  final DateTime? initialStartDate;
+  final DateTime? initialEndDate;
   final Future<DateTime?> Function(BuildContext, DateTime)? testDatePickerOverride;
 
   @override
@@ -46,8 +51,8 @@ class _EditWeekScreenState extends State<EditWeekScreen> {
   void initState() {
     super.initState();
     final week = widget.state.currentWeek;
-    _startDate = week.startDate;
-    _endDate = week.endDate;
+    _startDate = widget.initialStartDate ?? week.startDate;
+    _endDate = widget.initialEndDate ?? week.endDate;
     _schoolController = TextEditingController(text: week.schoolName);
     _principalController = TextEditingController(text: week.principalName);
     _rows = week.rows.map(_RosterRowDraft.fromRow).toList(growable: true);
@@ -204,10 +209,22 @@ class _EditWeekScreenState extends State<EditWeekScreen> {
     }
 
     final candidateDate = DateTime(picked.year, picked.month, picked.day);
+    final settings = widget.appSettingsState;
+    final isMonthly = settings?.mode == PlanningMode.monthly;
+
+    if (isStart && isMonthly) {
+      final svc = WeekService();
+      setState(() {
+        _startDate = svc.monthStart(candidateDate);
+        _endDate = svc.monthEnd(candidateDate);
+        _syncDraftFlags(clearStatus: true);
+      });
+      return;
+    }
+
     final candidateStart = isStart ? candidateDate : _startDate;
     final candidateEnd = isStart ? _endDate : candidateDate;
 
-    final settings = widget.appSettingsState;
     if (settings != null) {
       final error = WeekService().validateDateRange(
         candidateStart,
@@ -215,11 +232,16 @@ class _EditWeekScreenState extends State<EditWeekScreen> {
         settings.mode,
       );
       if (error != null) {
+        final svc = WeekService();
+        final exStart = svc.monthStart(candidateStart);
+        final exEnd = svc.monthEnd(candidateStart);
+        String fmtDate(DateTime d) =>
+            '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
         final message = switch (error) {
           WeekValidationError.tooLong =>
             'Haftalık modda en fazla 1 hafta seçilebilir.',
-          WeekValidationError.tooShort =>
-            'Aylık modda en az 1 aylık aralık seçilmelidir.',
+          WeekValidationError.notFullMonth =>
+            'Aylık planda yalnızca bir tam ay seçilebilir. Örn: ${fmtDate(exStart)} - ${fmtDate(exEnd)}',
           WeekValidationError.invalidRange =>
             'Başlangıç tarihi bitiş tarihinden sonra olamaz.',
         };

@@ -4,7 +4,7 @@ import '../../state/app_settings_state.dart';
 import '../../state/roster_state.dart';
 import '../../state/teacher_state.dart';
 import '../theme/app_theme.dart';
-import 'roster_home_screen.dart';
+import 'projects_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({
@@ -143,8 +143,8 @@ class WelcomeScreen extends StatelessWidget {
   void _navigateToHome(BuildContext context) {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
-        builder: (_) => RosterHomeScreen(
-          state: rosterState,
+        builder: (_) => ProjectsScreen(
+          rosterState: rosterState,
           teacherState: teacherState,
           appSettingsState: appSettingsState,
         ),

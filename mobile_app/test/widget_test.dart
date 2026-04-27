@@ -4,9 +4,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:nobetci_program_mobile/main.dart';
 import 'package:nobetci_program_mobile/models/planning_mode.dart';
+import 'package:nobetci_program_mobile/services/week_service.dart';
 import 'package:nobetci_program_mobile/state/app_settings_state.dart';
 import 'package:nobetci_program_mobile/state/roster_state.dart';
 import 'package:nobetci_program_mobile/ui/screens/edit_week_screen.dart';
+import 'package:nobetci_program_mobile/ui/screens/projects_screen.dart';
 import 'package:nobetci_program_mobile/ui/screens/roster_home_screen.dart';
 
 void main() {
@@ -16,7 +18,7 @@ void main() {
     final state = RosterState.initial();
     await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
 
-    expect(find.text('Nöbet Çizelgesi'), findsOneWidget);
+    expect(find.text('Nöbet Çizelgesi'), findsAtLeastNWidgets(1));
     await tester.scrollUntilVisible(find.text('Bahçe'), 120);
     expect(find.text('Bahçe'), findsOneWidget);
   });
@@ -107,7 +109,7 @@ void main() {
       await tester.tap(find.text('Kaydet'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Nöbet Çizelgesi'), findsOneWidget);
+      expect(find.text('Nöbet Çizelgesi'), findsAtLeastNWidgets(1));
       expect(find.text('Hafta kaydedildi.'), findsOneWidget);
       expect(state.currentWeek.rows[1].teachersByDay[0], isNotEmpty);
     },
@@ -723,10 +725,11 @@ void main() {
       expect(find.text('Bitiş 08.02.2026'), findsOneWidget);
     });
 
-    testWidgets('monthly: 26-day range shows tooShort snackbar, date unchanged',
+    testWidgets(
+        'monthly: end date pick with non-first-day start shows notFullMonth',
         (tester) async {
       _useTallTestView(tester);
-      final state = RosterState.initial();
+      final state = RosterState.initial(); // startDate=2026-02-02
       final appSettings = AppSettingsState();
       await appSettings.setMode(PlanningMode.monthly);
 
@@ -742,13 +745,15 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.text('Aylık modda en az 1 aylık aralık seçilmelidir.'),
+        find.textContaining('Aylık planda yalnızca bir tam ay seçilebilir.'),
         findsOneWidget,
       );
       expect(find.text('Bitiş 06.02.2026'), findsOneWidget);
     });
 
-    testWidgets('monthly: 27-day range is valid, date changes', (tester) async {
+    testWidgets(
+        'monthly: picking start auto-sets start to first and end to last of month',
+        (tester) async {
       _useTallTestView(tester);
       final state = RosterState.initial();
       final appSettings = AppSettingsState();
@@ -758,14 +763,48 @@ void main() {
         home: EditWeekScreen(
           state: state,
           appSettingsState: appSettings,
-          testDatePickerOverride: (ctx, date) async => DateTime(2026, 3, 1),
+          testDatePickerOverride: (ctx, date) async => DateTime(2026, 3, 15),
         ),
       ));
 
-      await tester.tap(find.text('Bitiş 06.02.2026'));
+      await tester.tap(find.text('Başlangıç 02.02.2026'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Bitiş 01.03.2026'), findsOneWidget);
+      expect(find.text('Başlangıç 01.03.2026'), findsOneWidget);
+      expect(find.text('Bitiş 31.03.2026'), findsOneWidget);
+    });
+
+    testWidgets('monthly: full month end date is valid, date changes',
+        (tester) async {
+      _useTallTestView(tester);
+      final weekService = WeekService();
+      final state = RosterState(
+        currentWeek: weekService.buildWeek(
+          startDate: DateTime(2026, 2, 1),
+          endDate: DateTime(2026, 2, 28),
+          rows: const [],
+          schoolName: '',
+          principalName: '',
+        ),
+        hasActiveRoster: true,
+      );
+      final appSettings = AppSettingsState();
+      await appSettings.setMode(PlanningMode.monthly);
+
+      await tester.pumpWidget(MaterialApp(
+        home: EditWeekScreen(
+          state: state,
+          appSettingsState: appSettings,
+          testDatePickerOverride: (ctx, date) async => DateTime(2026, 2, 28),
+        ),
+      ));
+
+      // Pick end=2026-02-28 with start=2026-02-01 → valid full month
+      await tester.tap(find.text('Bitiş 28.02.2026'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Bitiş 28.02.2026'), findsOneWidget);
+      expect(find.textContaining('Aylık planda'), findsNothing);
     });
 
     testWidgets('startDate after endDate shows invalidRange snackbar',
@@ -789,6 +828,191 @@ void main() {
         find.text('Başlangıç tarihi bitiş tarihinden sonra olamaz.'),
         findsOneWidget,
       );
+    });
+  });
+
+  group('_WeekHeader proje adı', () {
+    testWidgets('proje adı varsa sol tarafta gösterilir', (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial();
+      state.setProjectMetadata(name: '2026 Bahar Nöbetleri');
+      await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
+      expect(find.text('2026 Bahar Nöbetleri'), findsOneWidget);
+    });
+
+    testWidgets('proje adı yoksa Nöbet Çizelgesi gösterilir', (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial();
+      await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
+      expect(find.text('Nöbet Çizelgesi'), findsAtLeastNWidgets(1));
+    });
+
+    testWidgets('sol tarafta tarih aralığından türetilmiş başlık yok',
+        (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial();
+      await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
+      // week.title contains 'HAFTASİ' — should not appear in header
+      expect(find.textContaining('NÖBET'), findsNothing);
+    });
+  });
+
+  group('_WeekHeader tarih aralığı', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
+    testWidgets('haftalık modda haftalık aralık gösterilir', (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial();
+      final appSettings = AppSettingsState();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: RosterHomeScreen(
+            state: state,
+            appSettingsState: appSettings,
+          ),
+        ),
+      );
+
+      expect(find.text('02.02.2026 - 06.02.2026'), findsOneWidget);
+    });
+
+    testWidgets('aylık modda monthEnd(startDate) ile aralık gösterilir',
+        (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial(); // startDate=2026-02-02
+      final appSettings = AppSettingsState();
+      await appSettings.setMode(PlanningMode.monthly);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: RosterHomeScreen(
+            state: state,
+            appSettingsState: appSettings,
+          ),
+        ),
+      );
+
+      // monthEnd(2026-02-02) = 2026-02-28
+      expect(find.text('02.02.2026 - 28.02.2026'), findsOneWidget);
+    });
+
+    testWidgets('aylık modda Nisan başlangıçlı state doğru aralık gösterir',
+        (tester) async {
+      _useTallTestView(tester);
+      final svc = WeekService();
+      final state = RosterState(
+        currentWeek: svc.buildWeek(
+          startDate: DateTime(2026, 4, 1),
+          endDate: DateTime(2026, 4, 30),
+          rows: const [],
+          schoolName: '',
+          principalName: '',
+        ),
+        hasActiveRoster: true,
+      );
+      final appSettings = AppSettingsState();
+      await appSettings.setMode(PlanningMode.monthly);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: RosterHomeScreen(
+            state: state,
+            appSettingsState: appSettings,
+          ),
+        ),
+      );
+
+      expect(find.text('01.04.2026 - 30.04.2026'), findsOneWidget);
+      expect(find.text('21.05.2026'), findsNothing);
+    });
+
+    testWidgets('aylık modda generateMonthlyWeeks header range etkisizdir',
+        (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial(); // startDate=2026-02-02
+      final appSettings = AppSettingsState();
+      await appSettings.setMode(PlanningMode.monthly);
+      state.generateMonthlyWeeks();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: RosterHomeScreen(
+            state: state,
+            appSettingsState: appSettings,
+          ),
+        ),
+      );
+
+      // Header always uses monthEnd(startDate), not generatedMonthlyWeeks
+      expect(find.text('02.02.2026 - 28.02.2026'), findsOneWidget);
+      expect(find.text('27.02.2026'), findsNothing);
+    });
+  });
+
+  group('Projects akışı', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
+    testWidgets('hamburger menüde Projeler seçeneği görünür', (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial();
+      await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
+      await tester.tap(find.byKey(const Key('home-menu-button')));
+      await tester.pumpAndSettle();
+      expect(find.text('Projeler'), findsOneWidget);
+    });
+
+    testWidgets('Projeler menü seçeneği ProjectsScreen açar', (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial();
+      await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
+      await tester.tap(find.byKey(const Key('home-menu-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('menu-item-projects')));
+      await tester.pumpAndSettle();
+      expect(find.byType(ProjectsScreen), findsOneWidget);
+    });
+
+    testWidgets('hasActiveRoster=false iken tablo ve butonlar gösterilmez',
+        (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.blank();
+      await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
+      expect(find.text('Önceki Hafta'), findsNothing);
+      expect(find.text('Sonraki Hafta'), findsNothing);
+      expect(find.text('Export PDF'), findsNothing);
+      expect(find.text('Export Excel'), findsNothing);
+      expect(find.text('Henüz çizelge oluşturulmadı.'), findsOneWidget);
+      expect(
+        find.byKey(const Key('roster-home-go-to-projects')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('hasActiveRoster=true iken tablo ve butonlar gösterilir',
+        (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial();
+      await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
+      expect(find.text('Önceki Hafta'), findsOneWidget);
+      expect(find.text('Sonraki Hafta'), findsOneWidget);
+      expect(find.text('Export PDF'), findsOneWidget);
+      expect(find.text('Export Excel'), findsOneWidget);
+    });
+
+    testWidgets(
+        'hasActiveRoster=false Projelerime git butonu ProjectsScreen açar',
+        (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.blank();
+      await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
+      await tester.tap(find.byKey(const Key('roster-home-go-to-projects')));
+      await tester.pumpAndSettle();
+      expect(find.byType(ProjectsScreen), findsOneWidget);
     });
   });
 }
