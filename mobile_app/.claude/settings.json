@@ -8,7 +8,9 @@
       "Bash(C:/Users/BoruGurduu/.puro/envs/stable/flutter/bin/flutter.bat test *)",
       "Bash(C:/Users/BoruGurduu/.puro/envs/stable/flutter/bin/flutter.bat analyze *)",
       "Bash(C:/Users/BoruGurduu/AppData/Local/Android/Sdk/platform-tools/adb.exe uninstall *)",
-      "Bash(C:/Users/BoruGurduu/AppData/Local/Android/Sdk/platform-tools/adb.exe shell *)"
+      "Bash(C:/Users/BoruGurduu/AppData/Local/Android/Sdk/platform-tools/adb.exe shell *)",
+      "PowerShell(adb devices)",
+      "Bash(flutter pub *)"
     ]
   }
 }

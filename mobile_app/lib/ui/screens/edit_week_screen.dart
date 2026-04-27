@@ -976,16 +976,12 @@ class _EditDayGridRow extends StatelessWidget {
                       _EditGridStatusBadge(
                         label: switch (status) {
                           _EditRowStatus.empty => 'Boş',
-                          _EditRowStatus.filled => 'Dolu',
+                          _EditRowStatus.filled => '${teachers.length} öğretmen',
                           _EditRowStatus.conflict => 'Çakışma',
                         },
                         status: status,
                       ),
                       if (isDuplicateLocation) const _EditDuplicateBadge(),
-                      Text(
-                        'Satır ${rowIndex + 1}',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
                     ],
                   ),
                 ),

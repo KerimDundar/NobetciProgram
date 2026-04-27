@@ -12,7 +12,9 @@ import '../theme/app_theme.dart';
 import 'edit_week_screen.dart';
 import 'teacher_list_screen.dart';
 
-class RosterHomeScreen extends StatelessWidget {
+enum _HomeMenuAction { editWeek, teachers, planningMode, about, guide }
+
+class RosterHomeScreen extends StatefulWidget {
   const RosterHomeScreen({
     super.key,
     required this.state,
@@ -27,87 +29,137 @@ class RosterHomeScreen extends StatelessWidget {
   final ExportFileService exportFileService;
 
   @override
+  State<RosterHomeScreen> createState() => _RosterHomeScreenState();
+}
+
+class _RosterHomeScreenState extends State<RosterHomeScreen> {
+  final _menuController = MenuController();
+  bool _menuOpen = false;
+
+  void _toggleMenu() {
+    if (_menuController.isOpen) {
+      _menuController.close();
+    } else {
+      _menuController.open();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: state,
+      animation: widget.state,
       builder: (context, _) {
-        final week = state.currentWeek;
+        final week = widget.state.currentWeek;
 
         return Scaffold(
           appBar: AppBar(
             title: const Text('Nöbet Çizelgesi'),
-            actions: [
-              IconButton(
-                tooltip: 'Ogretmenler',
-                onPressed: teacherState == null
-                    ? null
-                    : () => _openTeacherScreen(context),
-                icon: const Icon(Icons.groups_outlined),
+          ),
+          floatingActionButton: MenuAnchor(
+            controller: _menuController,
+            onOpen: () => setState(() => _menuOpen = true),
+            onClose: () => setState(() => _menuOpen = false),
+            menuChildren: [
+              MenuItemButton(
+                key: const Key('menu-item-edit'),
+                leadingIcon: const Icon(Icons.edit_outlined),
+                onPressed: () =>
+                    _onMenuAction(context, _HomeMenuAction.editWeek),
+                child: const Text('Haftayı Düzenle'),
               ),
-              IconButton(
-                tooltip: 'Düzenle',
-                onPressed: () => _openEditScreen(context),
-                icon: const Icon(Icons.edit),
+              MenuItemButton(
+                key: const Key('menu-item-teachers'),
+                leadingIcon: const Icon(Icons.groups_outlined),
+                onPressed: widget.teacherState != null
+                    ? () => _onMenuAction(context, _HomeMenuAction.teachers)
+                    : null,
+                child: const Text('Öğretmenler'),
+              ),
+              if (widget.appSettingsState != null)
+                MenuItemButton(
+                  key: const Key('menu-item-planning'),
+                  leadingIcon: const Icon(Icons.tune),
+                  onPressed: () =>
+                      _onMenuAction(context, _HomeMenuAction.planningMode),
+                  child: const Text('Planlama Türü'),
+                ),
+              const Divider(),
+              MenuItemButton(
+                key: const Key('menu-item-about'),
+                leadingIcon: const Icon(Icons.info_outlined),
+                onPressed: () => _onMenuAction(context, _HomeMenuAction.about),
+                child: const Text('Hakkımızda'),
+              ),
+              MenuItemButton(
+                key: const Key('menu-item-guide'),
+                leadingIcon: const Icon(Icons.help_outline),
+                onPressed: () => _onMenuAction(context, _HomeMenuAction.guide),
+                child: const Text('Kullanım Kılavuzu'),
               ),
             ],
-          ),
-          body: SafeArea(
-            child: ListView(
-              padding: const EdgeInsets.all(AppTheme.pagePadding),
-              children: [
-                _WeekHeader(week: week),
-                const SizedBox(height: 8),
-                _DayGridPreview(week: week),
-                const SizedBox(height: 16),
-                _WeekActions(
-                  onPrevious: state.goToPreviousWeek,
-                  onNext: state.goToNextWeek,
-                ),
-                const SizedBox(height: 12),
-                if (appSettingsState != null)
-                  AnimatedBuilder(
-                    animation: appSettingsState!,
-                    builder: (_, child) {
-                      if (appSettingsState!.mode != PlanningMode.weekly) {
-                        return const SizedBox.shrink();
-                      }
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            key: const Key('generate-monthly-button'),
-                            onPressed: () => _generateMonthly(context),
-                            icon: const Icon(Icons.calendar_view_month),
-                            label: const Text('Aylık tablo oluştur'),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                _ExportActions(
-                  state: state,
-                  exportFileService: exportFileService,
-                ),
-                if (appSettingsState != null) ...[
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      key: const Key('planning-mode-button'),
-                      onPressed: () => _openPlanningModeDialog(context),
-                      icon: const Icon(Icons.tune),
-                      label: const Text('Planlama Türü'),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 16),
-                if (week.rows.isEmpty) ...[
-                  const _EmptyRosterCard(),
-                  const SizedBox(height: 12),
-                ],
-              ],
+            child: FloatingActionButton(
+              key: const Key('home-menu-button'),
+              onPressed: _toggleMenu,
+              child: const Icon(Icons.menu),
             ),
+          ),
+          body: Stack(
+            children: [
+              SafeArea(
+                child: ListView(
+                  padding: const EdgeInsets.all(AppTheme.pagePadding),
+                  children: [
+                    _WeekHeader(week: week),
+                    const SizedBox(height: 8),
+                    _DayGridPreview(week: week),
+                    const SizedBox(height: 16),
+                    _WeekActions(
+                      onPrevious: widget.state.goToPreviousWeek,
+                      onNext: widget.state.goToNextWeek,
+                    ),
+                    const SizedBox(height: 12),
+                    if (widget.appSettingsState != null)
+                      AnimatedBuilder(
+                        animation: widget.appSettingsState!,
+                        builder: (_, child) {
+                          if (widget.appSettingsState!.mode !=
+                              PlanningMode.weekly) {
+                            return const SizedBox.shrink();
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                key: const Key('generate-monthly-button'),
+                                onPressed: () => _generateMonthly(context),
+                                icon: const Icon(Icons.calendar_view_month),
+                                label: const Text('Aylık tablo oluştur'),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    _ExportActions(
+                      state: widget.state,
+                      exportFileService: widget.exportFileService,
+                    ),
+                    const SizedBox(height: 16),
+                    if (week.rows.isEmpty) ...[
+                      const _EmptyRosterCard(),
+                      const SizedBox(height: 12),
+                    ],
+                  ],
+                ),
+              ),
+              if (_menuOpen)
+                Positioned.fill(
+                  child: GestureDetector(
+                    onTap: () => _menuController.close(),
+                    behavior: HitTestBehavior.opaque,
+                  ),
+                ),
+            ],
           ),
         );
       },
@@ -118,9 +170,9 @@ class RosterHomeScreen extends StatelessWidget {
     final saved = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
         builder: (_) => EditWeekScreen(
-          state: state,
-          teacherState: teacherState,
-          appSettingsState: appSettingsState,
+          state: widget.state,
+          teacherState: widget.teacherState,
+          appSettingsState: widget.appSettingsState,
         ),
       ),
     );
@@ -134,7 +186,7 @@ class RosterHomeScreen extends StatelessWidget {
   }
 
   Future<void> _openTeacherScreen(BuildContext context) async {
-    final teacherState = this.teacherState;
+    final teacherState = widget.teacherState;
     if (teacherState == null) {
       return;
     }
@@ -143,9 +195,9 @@ class RosterHomeScreen extends StatelessWidget {
       MaterialPageRoute<void>(
         builder: (_) => TeacherListScreen(
           state: teacherState,
-          currentWeek: state.currentWeek,
+          currentWeek: widget.state.currentWeek,
           onTeacherDeletedFromRoster: (teacher) {
-            return state.clearAssignmentsForTeacher(teacher.name);
+            return widget.state.clearAssignmentsForTeacher(teacher.name);
           },
         ),
       ),
@@ -176,7 +228,7 @@ class RosterHomeScreen extends StatelessWidget {
     );
 
     if (confirmed != true || !context.mounted) return;
-    state.generateMonthlyWeeks();
+    widget.state.generateMonthlyWeeks();
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -187,8 +239,26 @@ class RosterHomeScreen extends StatelessWidget {
     );
   }
 
+  void _onMenuAction(BuildContext context, _HomeMenuAction action) {
+    switch (action) {
+      case _HomeMenuAction.editWeek:
+        _openEditScreen(context);
+      case _HomeMenuAction.teachers:
+        _openTeacherScreen(context);
+      case _HomeMenuAction.planningMode:
+        _openPlanningModeDialog(context);
+      case _HomeMenuAction.about:
+      case _HomeMenuAction.guide:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Bu sayfa sonraki güncellemede eklenecek.'),
+          ),
+        );
+    }
+  }
+
   Future<void> _openPlanningModeDialog(BuildContext context) async {
-    final settings = appSettingsState;
+    final settings = widget.appSettingsState;
     if (settings == null) return;
 
     final selected = await showDialog<PlanningMode>(
@@ -252,7 +322,7 @@ class _DayGridPreviewState extends State<_DayGridPreview> {
                     day: selectedDay,
                     cell: cell,
                   ),
-                  onTap: () => _showCellDetails(context, selectedDay, cell),
+                  onTap: () => _showDayDetails(context, selectedDay),
                 ),
           ],
         ),
@@ -260,50 +330,70 @@ class _DayGridPreviewState extends State<_DayGridPreview> {
     );
   }
 
-  void _showCellDetails(
-    BuildContext context,
-    WeekGridDay day,
-    WeekGridCell cell,
-  ) {
-    showModalBottomSheet<void>(
+  void _showDayDetails(BuildContext context, WeekGridDay day) {
+    final dayDate = widget.week.startDate.add(Duration(days: day.dayIndex));
+    final dateStr = _formatDayDate(dayDate);
+    final displayDayName = _dayDisplayName(day.dayName);
+
+    showDialog<void>(
       context: context,
       builder: (context) {
-        final teacher = cell.teacher.isEmpty ? 'Boş' : cell.teacher;
-        final status = _statusService.statusForCell(day: day, cell: cell);
-        final statusText = switch (status) {
-          GridCellStatus.empty => 'Boş',
-          GridCellStatus.filled => 'Dolu',
-          GridCellStatus.conflict => 'Çakışma',
-        };
-
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
+        return AlertDialog(
+          title: Text('Gün: $displayDayName $dateStr'),
+          content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Atama Detayı',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 12),
-                Text('Gün: ${day.dayName}'),
-                Text('Görev yeri: ${cell.location}'),
-                Text('Öğretmen: $teacher'),
-                Text('Durum: $statusText'),
-                Text('Satır: ${cell.rowIndex + 1}'),
-                if (cell.isDuplicateLocation) ...[
+                for (final cell in day.cells) ...[
+                  Text(
+                    cell.location.isEmpty ? '—' : cell.location,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  if (cell.teachers.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(left: 8, bottom: 4),
+                      child: Text('- Boş'),
+                    )
+                  else
+                    ...cell.teachers.map(
+                      (t) => Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: Text('- $t'),
+                      ),
+                    ),
                   const SizedBox(height: 8),
-                  const Text('Tekrar eden görev yeri'),
-                  Text('Grup: ${cell.duplicateRunGroup}'),
                 ],
               ],
             ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Kapat'),
+            ),
+          ],
         );
       },
     );
+  }
+
+  String _formatDayDate(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '$day.$month.${date.year}';
+  }
+
+  String _dayDisplayName(String upperName) {
+    return const {
+      'PAZARTESİ': 'Pazartesi',
+      'SALI': 'Salı',
+      'ÇARŞAMBA': 'Çarşamba',
+      'PERŞEMBE': 'Perşembe',
+      'CUMA': 'Cuma',
+      'CUMARTESİ': 'Cumartesi',
+      'PAZAR': 'Pazar',
+    }[upperName] ?? upperName;
   }
 }
 
@@ -378,11 +468,12 @@ class _DayGridRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final displayTeacher = cell.teacher.isEmpty ? '-' : cell.teacher;
-    final statusLabel = switch (status) {
-      GridCellStatus.empty => 'Boş',
-      GridCellStatus.filled => 'Dolu',
-      GridCellStatus.conflict => 'Çakışma',
-    };
+    final teacherCount = cell.teachers.length;
+    final statusLabel = status == GridCellStatus.conflict
+        ? 'Çakışma'
+        : teacherCount == 0
+        ? 'Boş'
+        : '$teacherCount öğretmen';
 
     return Semantics(
       button: true,

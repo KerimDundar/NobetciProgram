@@ -26,7 +26,9 @@ void main() {
       _useTallTestView(tester);
       await tester.pumpWidget(const NobetciProgramApp());
 
-      await tester.tap(find.byIcon(Icons.edit));
+      await tester.tap(find.byKey(const Key('home-menu-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('menu-item-edit')));
       await tester.pumpAndSettle();
 
       expect(find.text('Hafta Düzenle'), findsOneWidget);
@@ -48,7 +50,9 @@ void main() {
     final state = RosterState.initial();
     await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
 
-    await tester.tap(find.byIcon(Icons.edit));
+    await tester.tap(find.byKey(const Key('home-menu-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('menu-item-edit')));
     await tester.pumpAndSettle();
     await tester.drag(find.byType(ListView), const Offset(0, -2200));
     await tester.pumpAndSettle();
@@ -84,7 +88,9 @@ void main() {
         MaterialApp(home: RosterHomeScreen(state: state)),
       );
 
-      await tester.tap(find.byIcon(Icons.edit));
+      await tester.tap(find.byKey(const Key('home-menu-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('menu-item-edit')));
       await tester.pumpAndSettle();
       await tester.drag(find.byType(ListView), const Offset(0, -2200));
       await tester.pumpAndSettle();
@@ -130,7 +136,7 @@ void main() {
       expect(find.text('Planlama türü seçin'), findsNothing);
     });
 
-    testWidgets('Planlama Türü butonu dialog açar', (tester) async {
+    testWidgets('Planlama Türü menü seçeneği dialog açar', (tester) async {
       _useTallTestView(tester);
       final state = RosterState.initial();
       final appSettings = AppSettingsState();
@@ -144,7 +150,9 @@ void main() {
         ),
       );
 
-      await tester.tap(find.byKey(const Key('planning-mode-button')));
+      await tester.tap(find.byKey(const Key('home-menu-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('menu-item-planning')));
       await tester.pumpAndSettle();
 
       expect(find.text('Planlama türü seçin'), findsOneWidget);
@@ -165,7 +173,9 @@ void main() {
         ),
       );
 
-      await tester.tap(find.byKey(const Key('planning-mode-button')));
+      await tester.tap(find.byKey(const Key('home-menu-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('menu-item-planning')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('planning-mode-weekly')));
       await tester.pumpAndSettle();
@@ -187,7 +197,9 @@ void main() {
         ),
       );
 
-      await tester.tap(find.byKey(const Key('planning-mode-button')));
+      await tester.tap(find.byKey(const Key('home-menu-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('menu-item-planning')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('planning-mode-monthly')));
       await tester.pumpAndSettle();
@@ -210,7 +222,9 @@ void main() {
         ),
       );
 
-      await tester.tap(find.byKey(const Key('planning-mode-button')));
+      await tester.tap(find.byKey(const Key('home-menu-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('menu-item-planning')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('planning-mode-monthly')));
       await tester.pumpAndSettle();
@@ -232,7 +246,9 @@ void main() {
         ),
       );
 
-      await tester.tap(find.byKey(const Key('planning-mode-button')));
+      await tester.tap(find.byKey(const Key('home-menu-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('menu-item-planning')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('planning-mode-cancel')));
       await tester.pumpAndSettle();
@@ -391,6 +407,262 @@ void main() {
         ),
         findsOneWidget,
       );
+    });
+  });
+
+  group('UI/UX fix package #2', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
+    testWidgets('günlük plan satırı boş hücre Boş gösterir', (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial();
+      await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
+
+      expect(find.text('Boş'), findsWidgets);
+    });
+
+    testWidgets('günlük plan satırı dolu hücre N öğretmen gösterir',
+        (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial();
+      await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
+
+      expect(find.text('1 öğretmen'), findsWidgets);
+    });
+
+    testWidgets('hücre detay dialogu showDialog ile açılır', (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial();
+      await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
+
+      await tester.tap(find.text('1 öğretmen').first);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Gün:'), findsOneWidget);
+      expect(find.byType(AlertDialog), findsOneWidget);
+    });
+
+    testWidgets('hücre detay dialogunda Satır metni yok', (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial();
+      await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
+
+      await tester.tap(find.text('1 öğretmen').first);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Satır'), findsNothing);
+    });
+
+    testWidgets('hamburger menüsü home-menu-button açar', (tester) async {
+      _useTallTestView(tester);
+      await tester.pumpWidget(const NobetciProgramApp());
+
+      await tester.tap(find.byKey(const Key('home-menu-button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Haftayı Düzenle'), findsOneWidget);
+      expect(find.text('Hakkımızda'), findsOneWidget);
+      expect(find.text('Kullanım Kılavuzu'), findsOneWidget);
+    });
+
+    testWidgets('hamburger Hakkımızda snackbar gösterir', (tester) async {
+      _useTallTestView(tester);
+      await tester.pumpWidget(const NobetciProgramApp());
+
+      await tester.tap(find.byKey(const Key('home-menu-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('menu-item-about')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Bu sayfa sonraki güncellemede eklenecek.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('hamburger Kullanım Kılavuzu snackbar gösterir', (tester) async {
+      _useTallTestView(tester);
+      await tester.pumpWidget(const NobetciProgramApp());
+
+      await tester.tap(find.byKey(const Key('home-menu-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('menu-item-guide')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Bu sayfa sonraki güncellemede eklenecek.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('edit screen Satır metni yok', (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial();
+      await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
+
+      await tester.tap(find.byKey(const Key('home-menu-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('menu-item-edit')));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Satır'), findsNothing);
+    });
+
+    testWidgets('edit screen dolu hücre N öğretmen badge gösterir',
+        (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial();
+      await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
+
+      await tester.tap(find.byKey(const Key('home-menu-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('menu-item-edit')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('1 öğretmen'), findsWidgets);
+    });
+
+    testWidgets('günlük plan satırına tıklayınca tüm gün atamaları görünür',
+        (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial();
+      await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
+
+      await tester.tap(find.text('1 öğretmen').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Bahçe'), findsWidgets);
+      expect(find.text('Koridor'), findsWidgets);
+      expect(find.text('Kantin'), findsWidgets);
+    });
+
+    testWidgets('dialog başlığında gün adı ve tarih görünür', (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial();
+      await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
+
+      await tester.tap(find.text('1 öğretmen').first);
+      await tester.pumpAndSettle();
+
+      // startDate=2026-02-02 (Pazartesi), dayIndex=0
+      expect(find.text('Gün: Pazartesi 02.02.2026'), findsOneWidget);
+    });
+
+    testWidgets('hamburger butonu FloatingActionButton olarak görünür',
+        (tester) async {
+      _useTallTestView(tester);
+      await tester.pumpWidget(const NobetciProgramApp());
+
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+    });
+
+    testWidgets('menü açıkken hamburger butonuna tekrar basınca menü kapanır',
+        (tester) async {
+      _useTallTestView(tester);
+      await tester.pumpWidget(const NobetciProgramApp());
+
+      await tester.tap(find.byKey(const Key('home-menu-button')));
+      await tester.pumpAndSettle();
+      expect(find.text('Haftayı Düzenle'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('home-menu-button')));
+      await tester.pumpAndSettle();
+      expect(find.text('Haftayı Düzenle'), findsNothing);
+    });
+
+    testWidgets('Planlama Türü ana ekranda ayrı buton yok', (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial();
+      final appSettings = AppSettingsState();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: RosterHomeScreen(
+            state: state,
+            appSettingsState: appSettings,
+          ),
+        ),
+      );
+
+      expect(find.byKey(const Key('planning-mode-button')), findsNothing);
+    });
+
+    testWidgets('Planlama Türü hamburger menüde görünür', (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial();
+      final appSettings = AppSettingsState();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: RosterHomeScreen(
+            state: state,
+            appSettingsState: appSettings,
+          ),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('home-menu-button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Planlama Türü'), findsOneWidget);
+    });
+
+    testWidgets('menü açıkken arka plan tıklaması menüyü kapatır',
+        (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial();
+      await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
+
+      await tester.tap(find.byKey(const Key('home-menu-button')));
+      await tester.pumpAndSettle();
+      expect(find.text('Haftayı Düzenle'), findsOneWidget);
+
+      await tester.tapAt(const Offset(200, 200));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Haftayı Düzenle'), findsNothing);
+    });
+
+    testWidgets(
+        'menü açıkken arka plandaki butona tıklama sadece menüyü kapatır',
+        (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial();
+      await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
+      final initialTitle = state.currentWeek.title;
+
+      await tester.tap(find.byKey(const Key('home-menu-button')));
+      await tester.pumpAndSettle();
+
+      // Barrier absorbs the tap — Sonraki Hafta should NOT fire
+      await tester.tap(find.text('Sonraki Hafta'), warnIfMissed: false);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Haftayı Düzenle'), findsNothing);
+      expect(state.currentWeek.title, initialTitle);
+    });
+
+    testWidgets(
+        'menü kapandıktan sonra arka plandaki butona tıklama normal çalışır',
+        (tester) async {
+      _useTallTestView(tester);
+      final state = RosterState.initial();
+      await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
+      final initialTitle = state.currentWeek.title;
+
+      // Open menu, barrier tap closes it
+      await tester.tap(find.byKey(const Key('home-menu-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sonraki Hafta'), warnIfMissed: false);
+      await tester.pumpAndSettle();
+
+      // Menu is now closed — tap Sonraki Hafta normally
+      await tester.tap(find.text('Sonraki Hafta'));
+      await tester.pumpAndSettle();
+
+      expect(state.currentWeek.title, isNot(initialTitle));
     });
   });
 
