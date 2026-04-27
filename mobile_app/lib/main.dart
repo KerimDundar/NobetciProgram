@@ -4,7 +4,7 @@ import 'services/local_teacher_repository.dart';
 import 'state/app_settings_state.dart';
 import 'state/roster_state.dart';
 import 'state/teacher_state.dart';
-import 'ui/screens/roster_home_screen.dart';
+import 'ui/screens/welcome_screen.dart';
 import 'ui/theme/app_theme.dart';
 
 void main() {
@@ -45,8 +45,8 @@ class _NobetciProgramAppState extends State<NobetciProgramApp> {
       title: 'Nobetci Program',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.build(),
-      home: RosterHomeScreen(
-        state: _rosterState,
+      home: WelcomeScreen(
+        rosterState: _rosterState,
         teacherState: _teacherState,
         appSettingsState: _appSettingsState,
       ),

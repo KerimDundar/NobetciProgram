@@ -35,7 +35,9 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byIcon(Icons.groups_outlined));
+    await tester.tap(find.byKey(const Key('home-menu-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('menu-item-teachers')));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey('teacher-picker-item-T001')));

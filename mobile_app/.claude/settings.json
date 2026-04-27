@@ -10,7 +10,8 @@
       "Bash(C:/Users/BoruGurduu/AppData/Local/Android/Sdk/platform-tools/adb.exe uninstall *)",
       "Bash(C:/Users/BoruGurduu/AppData/Local/Android/Sdk/platform-tools/adb.exe shell *)",
       "PowerShell(adb devices)",
-      "Bash(flutter pub *)"
+      "Bash(flutter pub *)",
+      "PowerShell(adb -s emulator-5554 uninstall com.example.nobetci_program_mobile 2>&1)"
     ]
   }
 }

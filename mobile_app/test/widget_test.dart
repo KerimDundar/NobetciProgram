@@ -13,7 +13,8 @@ void main() {
   testWidgets('shows current roster state on home', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const NobetciProgramApp());
+    final state = RosterState.initial();
+    await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
 
     expect(find.text('Nöbet Çizelgesi'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Bahçe'), 120);
@@ -24,7 +25,8 @@ void main() {
     'edit screen hides manual teacher input and keeps picker action',
     (WidgetTester tester) async {
       _useTallTestView(tester);
-      await tester.pumpWidget(const NobetciProgramApp());
+      final state = RosterState.initial();
+      await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
 
       await tester.tap(find.byKey(const Key('home-menu-button')));
       await tester.pumpAndSettle();
@@ -457,7 +459,8 @@ void main() {
 
     testWidgets('hamburger menüsü home-menu-button açar', (tester) async {
       _useTallTestView(tester);
-      await tester.pumpWidget(const NobetciProgramApp());
+      final state = RosterState.initial();
+      await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
 
       await tester.tap(find.byKey(const Key('home-menu-button')));
       await tester.pumpAndSettle();
@@ -469,7 +472,8 @@ void main() {
 
     testWidgets('hamburger Hakkımızda snackbar gösterir', (tester) async {
       _useTallTestView(tester);
-      await tester.pumpWidget(const NobetciProgramApp());
+      final state = RosterState.initial();
+      await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
 
       await tester.tap(find.byKey(const Key('home-menu-button')));
       await tester.pumpAndSettle();
@@ -484,7 +488,8 @@ void main() {
 
     testWidgets('hamburger Kullanım Kılavuzu snackbar gösterir', (tester) async {
       _useTallTestView(tester);
-      await tester.pumpWidget(const NobetciProgramApp());
+      final state = RosterState.initial();
+      await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
 
       await tester.tap(find.byKey(const Key('home-menu-button')));
       await tester.pumpAndSettle();
@@ -553,7 +558,8 @@ void main() {
     testWidgets('hamburger butonu FloatingActionButton olarak görünür',
         (tester) async {
       _useTallTestView(tester);
-      await tester.pumpWidget(const NobetciProgramApp());
+      final state = RosterState.initial();
+      await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
 
       expect(find.byType(FloatingActionButton), findsOneWidget);
     });
@@ -561,7 +567,8 @@ void main() {
     testWidgets('menü açıkken hamburger butonuna tekrar basınca menü kapanır',
         (tester) async {
       _useTallTestView(tester);
-      await tester.pumpWidget(const NobetciProgramApp());
+      final state = RosterState.initial();
+      await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
 
       await tester.tap(find.byKey(const Key('home-menu-button')));
       await tester.pumpAndSettle();
