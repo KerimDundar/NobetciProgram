@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../models/planning_mode.dart';
 import '../models/roster_row.dart';
 import '../models/teacher.dart';
 import '../services/cell_teacher_codec.dart';
@@ -305,6 +306,7 @@ class RosterState extends ChangeNotifier {
     required String schoolName,
     required String principalName,
     required List<RosterRow> rows,
+    PlanningMode mode = PlanningMode.weekly,
   }) {
     if (startDate.isAfter(endDate)) {
       return 'Başlangıç tarihi bitiş tarihinden büyük olamaz.';
@@ -318,6 +320,7 @@ class RosterState extends ChangeNotifier {
         rows: preparedRows,
         schoolName: schoolName,
         principalName: principalName,
+        mode: mode,
       );
       _hasActiveRoster = true;
       notifyListeners();

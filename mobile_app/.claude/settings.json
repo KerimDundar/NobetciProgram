@@ -15,7 +15,9 @@
       "Bash(node -e ' *)",
       "Bash(adb devices *)",
       "Bash(adb uninstall *)",
-      "Bash(adb shell *)"
+      "Bash(adb shell *)",
+      "Bash(python3 -c ' *)",
+      "PowerShell(adb devices 2>&1)"
     ]
   }
 }

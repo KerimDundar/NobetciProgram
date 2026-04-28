@@ -1,4 +1,4 @@
-import '../models/planning_mode.dart';
+﻿import '../models/planning_mode.dart';
 import '../models/roster_row.dart';
 import '../models/week.dart';
 import 'roster_service.dart';
@@ -25,6 +25,9 @@ const List<String> turkishMonths = [
 
 const String titleSuffix =
     'HAFTASI N\u00D6BET\u00C7\u0130 \u00D6\u011ERETMEN L\u0130STES\u0130';
+
+const String monthlyTitleSuffix =
+    'AYLIK NÖBETÇİ ÖĞRETMEN LİSTESİ';
 
 class WeekDateRange {
   const WeekDateRange({required this.startDate, required this.endDate});
@@ -62,9 +65,10 @@ class WeekService {
     required List<RosterRow> rows,
     String schoolName = '',
     String principalName = '',
+    PlanningMode mode = PlanningMode.weekly,
   }) {
     return Week(
-      title: buildTitle(startDate, endDate),
+      title: buildTitle(startDate, endDate, mode),
       startDate: startDate,
       endDate: endDate,
       schoolName: _normalizer.displayClean(schoolName),
@@ -156,11 +160,14 @@ class WeekService {
     }
 
     final canonicalTitle = _normalizer.canonical(cleanedTitle);
-    if (!canonicalTitle.contains(_normalizer.canonical(titleSuffix))) {
+    final hasWeeklySuffix = canonicalTitle.contains(_normalizer.canonical(titleSuffix));
+    final hasMonthlySuffix = canonicalTitle.contains(_normalizer.canonical(monthlyTitleSuffix));
+    if (!hasWeeklySuffix && !hasMonthlySuffix) {
       throw const FormatException(
         'Ba\u015Fl\u0131k beklenen ifadeyi i\u00E7ermiyor.',
       );
     }
+    final detectedSuffix = hasMonthlySuffix ? monthlyTitleSuffix : titleSuffix;
 
     final match = RegExp(
       '(\\d{1,2})\\s+([A-Z\\u00C7\\u011E\\u0130\\u00D6\\u015E\\u00DC]+)'
@@ -195,15 +202,16 @@ class WeekService {
     return ParsedWeekTitle(
       startDate: _strictDate(startYear, startMonth, startDay),
       endDate: _strictDate(endYear, endMonth, endDay),
-      suffix: titleSuffix,
+      suffix: detectedSuffix,
     );
   }
 
   /// Maps roster_logic.build_title.
-  String buildTitle(DateTime startDate, DateTime endDate) {
+  String buildTitle(DateTime startDate, DateTime endDate, [PlanningMode mode = PlanningMode.weekly]) {
     final startMonth = turkishMonths[startDate.month - 1];
     final endMonth = turkishMonths[endDate.month - 1];
-    return '${startDate.day} $startMonth-${endDate.day} $endMonth $titleSuffix';
+    final suffix = mode == PlanningMode.monthly ? monthlyTitleSuffix : titleSuffix;
+    return '${startDate.day} $startMonth-${endDate.day} $endMonth $suffix';
   }
 
   DateTime _strictDate(int year, int month, int day) {

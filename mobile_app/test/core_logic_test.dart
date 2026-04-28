@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:math';
 import 'dart:io';
 import 'dart:typed_data';
@@ -497,6 +497,86 @@ void main() {
         '2 \u015EUBAT-6 \u015EUBAT HAFTASI N\u00D6BET\u00C7\u0130 '
         '\u00D6\u011ERETMEN L\u0130STES\u0130',
       );
+    });
+
+    test('buildTitle haftalık mod HAFTASI suffix kullanır', () {
+      expect(
+        service.buildTitle(
+          DateTime(2026, 2, 2),
+          DateTime(2026, 2, 6),
+          PlanningMode.weekly,
+        ),
+        '2 ŞUBAT-6 ŞUBAT HAFTASI NÖBETÇİ '
+        'ÖĞRETMEN LİSTESİ',
+      );
+    });
+
+    test('buildTitle aylık mod AYLIK suffix kullanır', () {
+      expect(
+        service.buildTitle(
+          DateTime(2026, 4, 1),
+          DateTime(2026, 4, 30),
+          PlanningMode.monthly,
+        ),
+        '1 NİSAN-30 NİSAN AYLIK NÖBETÇİ '
+        'ÖĞRETMEN LİSTESİ',
+      );
+    });
+
+    test('buildTitle aylık Şubat normal yıl', () {
+      expect(
+        service.buildTitle(
+          DateTime(2026, 2, 1),
+          DateTime(2026, 2, 28),
+          PlanningMode.monthly,
+        ),
+        '1 ŞUBAT-28 ŞUBAT AYLIK NÖBETÇİ '
+        'ÖĞRETMEN LİSTESİ',
+      );
+    });
+
+    test('buildTitle aylık Şubat artık yıl', () {
+      expect(
+        service.buildTitle(
+          DateTime(2028, 2, 1),
+          DateTime(2028, 2, 29),
+          PlanningMode.monthly,
+        ),
+        '1 ŞUBAT-29 ŞUBAT AYLIK NÖBETÇİ '
+        'ÖĞRETMEN LİSTESİ',
+      );
+    });
+
+    test('buildWeek aylık modda title AYLIK içerir', () {
+      final week = service.buildWeek(
+        startDate: DateTime(2026, 4, 1),
+        endDate: DateTime(2026, 4, 30),
+        rows: const [],
+        mode: PlanningMode.monthly,
+      );
+      expect(week.title, contains('AYLIK'));
+      expect(week.title, isNot(contains('HAFTASI')));
+    });
+
+    test('buildWeek haftalık modda title HAFTASI içerir', () {
+      final week = service.buildWeek(
+        startDate: DateTime(2026, 2, 2),
+        endDate: DateTime(2026, 2, 6),
+        rows: const [],
+      );
+      expect(week.title, contains('HAFTASI'));
+      expect(week.title, isNot(contains('AYLIK')));
+    });
+
+    test('parseTitle aylık başlık kabul eder', () {
+      final parsed = service.parseTitle(
+        '1 NİSAN-30 NİSAN AYLIK NÖBETÇİ '
+        'ÖĞRETMEN LİSTESİ',
+        2026,
+      );
+      expect(parsed.startDate, DateTime(2026, 4, 1));
+      expect(parsed.endDate, DateTime(2026, 4, 30));
+      expect(parsed.suffix, monthlyTitleSuffix);
     });
 
     test('parseTitle accepts human-cased Turkish title', () {
@@ -2442,6 +2522,76 @@ void main() {
       }
     });
 
+
+    test('aylık PDF başlığı AYLIK içerir, HAFTASI içermez', () async {
+      const pdfService = PdfExportService();
+      const snapshotService = ExportSnapshotService();
+      final svc = WeekService();
+      final week = svc.buildWeek(
+        startDate: DateTime(2026, 4, 1),
+        endDate: DateTime(2026, 4, 30),
+        rows: const [],
+        mode: PlanningMode.monthly,
+      );
+      expect(week.title, contains('AYLIK'));
+      expect(week.title, isNot(contains('HAFTASI')));
+      final snapshot = snapshotService.fromCurrentWeek(week);
+      final bytes = await pdfService.buildPdf(snapshot);
+      expect(bytes, isNotEmpty);
+    });
+
+    test('haftalık PDF başlığı HAFTASI içerir, AYLIK içermez', () async {
+      const pdfService = PdfExportService();
+      const snapshotService = ExportSnapshotService();
+      final svc = WeekService();
+      final week = svc.buildWeek(
+        startDate: DateTime(2026, 2, 2),
+        endDate: DateTime(2026, 2, 6),
+        rows: const [],
+      );
+      expect(week.title, contains('HAFTASI'));
+      expect(week.title, isNot(contains('AYLIK')));
+      final snapshot = snapshotService.fromCurrentWeek(week);
+      final bytes = await pdfService.buildPdf(snapshot);
+      expect(bytes, isNotEmpty);
+    });
+
+    test('aylık Excel başlığı AYLIK içerir, HAFTASI içermez', () {
+      const excelService = ExcelExportService();
+      const snapshotService = ExportSnapshotService();
+      final svc = WeekService();
+      final week = svc.buildWeek(
+        startDate: DateTime(2026, 4, 1),
+        endDate: DateTime(2026, 4, 30),
+        rows: const [],
+        mode: PlanningMode.monthly,
+      );
+      final snapshot = snapshotService.fromCurrentWeek(week);
+      final bytes = excelService.buildWorkbook(snapshot);
+      final workbook = xl.Excel.decodeBytes(bytes);
+      final sheet = workbook.tables[ExcelExportService.sheetName]!;
+      final titleCell = _cellText(sheet, 0, 0);
+      expect(titleCell, contains('AYLIK'));
+      expect(titleCell, isNot(contains('HAFTASI')));
+    });
+
+    test('haftalık Excel başlığı HAFTASI içerir, AYLIK içermez', () {
+      const excelService = ExcelExportService();
+      const snapshotService = ExportSnapshotService();
+      final svc = WeekService();
+      final week = svc.buildWeek(
+        startDate: DateTime(2026, 2, 2),
+        endDate: DateTime(2026, 2, 6),
+        rows: const [],
+      );
+      final snapshot = snapshotService.fromCurrentWeek(week);
+      final bytes = excelService.buildWorkbook(snapshot);
+      final workbook = xl.Excel.decodeBytes(bytes);
+      final sheet = workbook.tables[ExcelExportService.sheetName]!;
+      final titleCell = _cellText(sheet, 0, 0);
+      expect(titleCell, contains('HAFTASI'));
+      expect(titleCell, isNot(contains('AYLIK')));
+    });
     group('Multi-week (monthly) export', () {
       const snapshotService = ExportSnapshotService();
       const tableService = ExportTableService();

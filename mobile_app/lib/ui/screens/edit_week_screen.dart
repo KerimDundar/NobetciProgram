@@ -435,6 +435,7 @@ class _EditWeekScreenState extends State<EditWeekScreen> {
       schoolName: _schoolController.text,
       principalName: _principalController.text,
       rows: _currentRows(),
+      mode: widget.appSettingsState?.mode ?? PlanningMode.weekly,
     );
 
     if (!mounted) {
