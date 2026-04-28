@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
-import 'services/local_teacher_repository.dart';
 import 'state/app_settings_state.dart';
 import 'state/roster_state.dart';
-import 'state/teacher_state.dart';
 import 'ui/screens/welcome_screen.dart';
 import 'ui/theme/app_theme.dart';
 
@@ -20,9 +19,6 @@ class NobetciProgramApp extends StatefulWidget {
 
 class _NobetciProgramAppState extends State<NobetciProgramApp> {
   late final RosterState _rosterState = RosterState.blank();
-  late final TeacherState _teacherState = TeacherState(
-    repository: LocalTeacherRepository(),
-  );
   late final AppSettingsState _appSettingsState = AppSettingsState();
 
   @override
@@ -34,7 +30,6 @@ class _NobetciProgramAppState extends State<NobetciProgramApp> {
   @override
   void dispose() {
     _appSettingsState.dispose();
-    _teacherState.dispose();
     _rosterState.dispose();
     super.dispose();
   }
@@ -45,9 +40,15 @@ class _NobetciProgramAppState extends State<NobetciProgramApp> {
       title: 'Nobetci Program',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.build(),
+      locale: const Locale('tr', 'TR'),
+      supportedLocales: const [Locale('tr', 'TR')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       home: WelcomeScreen(
         rosterState: _rosterState,
-        teacherState: _teacherState,
         appSettingsState: _appSettingsState,
       ),
     );

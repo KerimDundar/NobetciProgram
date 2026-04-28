@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../models/planning_mode.dart';
+import '../../models/week.dart';
 import '../../services/week_service.dart';
 import '../../state/app_settings_state.dart';
 import '../../state/roster_state.dart';
-import '../../state/teacher_state.dart';
 import '../theme/app_theme.dart';
 import 'edit_week_screen.dart';
 import 'roster_home_screen.dart';
@@ -43,12 +43,10 @@ class ProjectsScreen extends StatefulWidget {
   const ProjectsScreen({
     super.key,
     required this.rosterState,
-    this.teacherState,
     this.appSettingsState,
   });
 
   final RosterState rosterState;
-  final TeacherState? teacherState;
   final AppSettingsState? appSettingsState;
 
   @override
@@ -118,65 +116,104 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         builder: (context, _) => _buildCardList(context, appSettings.mode),
       );
     }
-    return _buildCardList(context, PlanningMode.weekly);
+    return _buildCardList(context, widget.rosterState.activePlanningMode);
   }
 
-  Widget _buildCardList(BuildContext context, PlanningMode mode) {
+  Widget _buildCardList(BuildContext context, PlanningMode displayMode) {
     final state = widget.rosterState;
-    final week = state.currentWeek;
-    final projectName = state.projectName.isNotEmpty
-        ? state.projectName
-        : (week.title.isNotEmpty ? week.title : 'Nöbet Çizelgesi');
+    final projects = state.projects;
 
-    final planLabel =
-        mode == PlanningMode.monthly ? 'Aylık Plan' : 'Haftalık Plan';
-    DateTime rangeEnd = week.endDate;
-    if (mode == PlanningMode.monthly) {
-      rangeEnd = WeekService().monthEnd(week.startDate);
+    if (projects.isEmpty) {
+      // Backward compat: single active roster without explicit project list
+      return _buildSingleCard(
+        context,
+        name: state.projectName.isNotEmpty
+            ? state.projectName
+            : 'Nöbet Çizelgesi',
+        week: state.currentWeek,
+        mode: displayMode,
+        isFirst: true,
+        projectId: null,
+      );
     }
 
     return ListView(
       padding: const EdgeInsets.all(AppTheme.pagePadding),
       children: [
-        Card(
-          child: InkWell(
-            key: const Key('projects-roster-card'),
-            onTap: () => Navigator.of(context).pop(),
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  const Icon(Icons.table_chart_outlined),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          projectName,
-                          style: Theme.of(context).textTheme.titleSmall,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          planLabel,
-                          style: Theme.of(context).textTheme.labelSmall,
-                        ),
-                        Text(
-                          _rangeLabel(week.startDate, rangeEnd),
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right),
-                ],
-              ),
+        for (var i = 0; i < projects.length; i++)
+          Padding(
+            padding: EdgeInsets.only(bottom: i < projects.length - 1 ? 12 : 0),
+            child: _buildSingleCard(
+              context,
+              name: projects[i].name.isNotEmpty
+                  ? projects[i].name
+                  : 'Nöbet Çizelgesi',
+              week: projects[i].currentWeek,
+              mode: displayMode,
+              isFirst: i == 0,
+              projectId: projects[i].id,
             ),
           ),
-        ),
       ],
+    );
+  }
+
+  Widget _buildSingleCard(
+    BuildContext context, {
+    required String name,
+    required Week week,
+    required PlanningMode mode,
+    required bool isFirst,
+    required String? projectId,
+  }) {
+    final planLabel =
+        mode == PlanningMode.monthly ? 'Aylık Plan' : 'Haftalık Plan';
+    final rangeEnd = mode == PlanningMode.monthly
+        ? WeekService().monthEnd(week.startDate)
+        : week.endDate;
+
+    return Card(
+      child: InkWell(
+        key: isFirst ? const Key('projects-roster-card') : null,
+        onTap: () {
+          if (projectId != null) {
+            widget.rosterState.openProject(projectId);
+          }
+          Navigator.of(context).pop();
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              const Icon(Icons.table_chart_outlined),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: Theme.of(context).textTheme.titleSmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      planLabel,
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                    Text(
+                      _rangeLabel(week.startDate, rangeEnd),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -188,8 +225,6 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     );
     if (result == null || !mounted) return;
 
-    widget.rosterState.setProjectMetadata(name: result.name);
-
     DateTime? initialStart;
     DateTime? initialEnd;
     if (result.planningMode == PlanningMode.monthly) {
@@ -197,6 +232,13 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       initialStart = range.startDate;
       initialEnd = range.endDate;
     }
+
+    widget.rosterState.createProject(
+      name: result.name,
+      planningMode: result.planningMode,
+      startDate: initialStart,
+      endDate: initialEnd,
+    );
 
     if (widget.appSettingsState != null) {
       await widget.appSettingsState!.setMode(result.planningMode);
@@ -207,7 +249,6 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       MaterialPageRoute<bool>(
         builder: (_) => EditWeekScreen(
           state: widget.rosterState,
-          teacherState: widget.teacherState,
           appSettingsState: widget.appSettingsState,
           initialStartDate: initialStart,
           initialEndDate: initialEnd,
@@ -219,7 +260,6 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         MaterialPageRoute<void>(
           builder: (_) => RosterHomeScreen(
             state: widget.rosterState,
-            teacherState: widget.teacherState,
             appSettingsState: widget.appSettingsState,
           ),
         ),

@@ -17,7 +17,9 @@
       "Bash(adb uninstall *)",
       "Bash(adb shell *)",
       "Bash(python3 -c ' *)",
-      "PowerShell(adb devices 2>&1)"
+      "PowerShell(adb devices 2>&1)",
+      "Bash(Get-Content \"C:\\\\Users\\\\BORUGU~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Git-NobetciProgram-mobile-app\\\\90ec57b9-30ae-47c1-a0fa-5423a609509d\\\\tasks\\\\bs8bn5206.output\" -Wait)",
+      "Bash(Select-String -Pattern \"Installed|error|Error|FAILED|Built|Syncing|Running on|Flutter run|hot reload|debug\")"
     ]
   }
 }

@@ -4,8 +4,9 @@ import 'package:flutter/foundation.dart';
 
 import '../models/teacher.dart';
 import '../services/teacher_repository.dart';
+import 'teacher_list_state.dart';
 
-class TeacherState extends ChangeNotifier {
+class TeacherState extends ChangeNotifier implements TeacherListStateAdapter {
   TeacherState({TeacherRepository? repository})
     : _repository = repository ?? InMemoryTeacherRepository(),
       _ownsRepository = repository == null {
@@ -39,8 +40,11 @@ class TeacherState extends ChangeNotifier {
   bool _isLoading = true;
   String? _errorMessage;
 
+  @override
   List<Teacher> get teachers => _teachers;
+  @override
   bool get isLoading => _isLoading;
+  @override
   String? get errorMessage => _errorMessage;
   Future<void> get ready => _readyCompleter.future;
 
@@ -79,14 +83,17 @@ class TeacherState extends ChangeNotifier {
     return null;
   }
 
+  @override
   Future<String?> createTeacher(Teacher teacher) {
     return _runAction(() => _repository.create(teacher));
   }
 
+  @override
   Future<String?> updateTeacher(Teacher teacher) {
     return _runAction(() => _repository.update(teacher));
   }
 
+  @override
   Future<String?> deleteTeacher(String id) {
     return _runAction(() => _repository.deleteById(id));
   }

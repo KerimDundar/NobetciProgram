@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../state/app_settings_state.dart';
 import '../../state/roster_state.dart';
-import '../../state/teacher_state.dart';
 import '../theme/app_theme.dart';
 import 'projects_screen.dart';
 
@@ -10,12 +9,10 @@ class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({
     super.key,
     required this.rosterState,
-    required this.teacherState,
     required this.appSettingsState,
   });
 
   final RosterState rosterState;
-  final TeacherState teacherState;
   final AppSettingsState appSettingsState;
 
   @override
@@ -145,7 +142,6 @@ class WelcomeScreen extends StatelessWidget {
       MaterialPageRoute<void>(
         builder: (_) => ProjectsScreen(
           rosterState: rosterState,
-          teacherState: teacherState,
           appSettingsState: appSettingsState,
         ),
       ),

@@ -8,7 +8,7 @@ import '../../services/week_grid_projection_service.dart';
 import '../../services/week_service.dart';
 import '../../state/app_settings_state.dart';
 import '../../state/roster_state.dart';
-import '../../state/teacher_state.dart';
+import '../../state/teacher_list_state.dart';
 import '../theme/app_theme.dart';
 import 'edit_week_screen.dart';
 import 'projects_screen.dart';
@@ -26,7 +26,7 @@ class RosterHomeScreen extends StatefulWidget {
   });
 
   final RosterState state;
-  final TeacherState? teacherState;
+  final TeacherListStateAdapter? teacherState;
   final AppSettingsState? appSettingsState;
   final ExportFileService exportFileService;
 
@@ -72,9 +72,7 @@ class _RosterHomeScreenState extends State<RosterHomeScreen> {
               MenuItemButton(
                 key: const Key('menu-item-teachers'),
                 leadingIcon: const Icon(Icons.groups_outlined),
-                onPressed: widget.teacherState != null
-                    ? () => _onMenuAction(context, _HomeMenuAction.teachers)
-                    : null,
+                onPressed: () => _onMenuAction(context, _HomeMenuAction.teachers),
                 child: const Text('Öğretmenler'),
               ),
               if (widget.appSettingsState != null)
@@ -218,7 +216,6 @@ class _RosterHomeScreenState extends State<RosterHomeScreen> {
       MaterialPageRoute<void>(
         builder: (_) => ProjectsScreen(
           rosterState: widget.state,
-          teacherState: widget.teacherState,
           appSettingsState: widget.appSettingsState,
         ),
       ),
@@ -245,15 +242,12 @@ class _RosterHomeScreenState extends State<RosterHomeScreen> {
   }
 
   Future<void> _openTeacherScreen(BuildContext context) async {
-    final teacherState = widget.teacherState;
-    if (teacherState == null) {
-      return;
-    }
+    final effectiveState = widget.teacherState ?? widget.state;
 
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
         builder: (_) => TeacherListScreen(
-          state: teacherState,
+          state: effectiveState,
           currentWeek: widget.state.currentWeek,
           onTeacherDeletedFromRoster: (teacher) {
             return widget.state.clearAssignmentsForTeacher(teacher.name);

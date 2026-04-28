@@ -6,7 +6,7 @@ import '../../services/cell_teacher_codec.dart';
 import '../../services/week_service.dart';
 import '../../state/app_settings_state.dart';
 import '../../state/roster_state.dart';
-import '../../state/teacher_state.dart';
+import '../../state/teacher_list_state.dart';
 import '../widgets/teacher_selection_panel.dart';
 
 const String _draftMultiTeacherLineBreakToken = r'\n';
@@ -24,7 +24,7 @@ class EditWeekScreen extends StatefulWidget {
   });
 
   final RosterState state;
-  final TeacherState? teacherState;
+  final TeacherListStateAdapter? teacherState;
   final AppSettingsState? appSettingsState;
   final DateTime? initialStartDate;
   final DateTime? initialEndDate;
@@ -335,12 +335,6 @@ class _EditWeekScreenState extends State<EditWeekScreen> {
 
   Future<void> _pickTeacherForCell(int rowIndex, int dayIndex) async {
     final teacherState = widget.teacherState;
-    if (teacherState != null && teacherState.isLoading) {
-      await teacherState.ready;
-      if (!mounted) {
-        return;
-      }
-    }
 
     final teachers = teacherState?.teachers ?? widget.state.teachers;
     final draftWeek = widget.state.currentWeek.copyWith(rows: _currentRows());

@@ -1,64 +1,114 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/planning_mode.dart';
+import '../models/roster_project.dart';
 import '../models/roster_row.dart';
 import '../models/teacher.dart';
-import '../services/cell_teacher_codec.dart';
 import '../models/week.dart';
+import '../services/cell_teacher_codec.dart';
 import '../services/export_snapshot_service.dart';
 import '../services/roster_service.dart';
 import '../services/teacher_service.dart';
 import '../services/text_normalizer.dart';
 import '../services/week_service.dart';
+import 'teacher_list_state.dart';
 
-class RosterState extends ChangeNotifier {
+class RosterState extends ChangeNotifier implements TeacherListStateAdapter {
   RosterState({
     required Week currentWeek,
     bool hasActiveRoster = false,
     String projectName = '',
     WeekService? weekService,
     RosterService? rosterService,
-    TeacherService? teacherService,
     CellTeacherCodec? cellTeacherCodec,
     TextNormalizer? textNormalizer,
     ExportSnapshotService? exportSnapshotService,
-  }) : _currentWeek = currentWeek,
-       _hasActiveRoster = hasActiveRoster,
-       _projectName = projectName,
+    List<Teacher>? initialTeachers,
+  }) : _weekService = weekService ?? WeekService(rosterService: rosterService),
        _rosterService = rosterService ?? const RosterService(),
-       _teacherService = teacherService ?? TeacherService(),
        _cellTeacherCodec = cellTeacherCodec ?? const CellTeacherCodec(),
        _textNormalizer = textNormalizer ?? const TextNormalizer(),
        _exportSnapshotService =
-           exportSnapshotService ?? const ExportSnapshotService(),
-       _weekService = weekService ?? WeekService(rosterService: rosterService);
+           exportSnapshotService ?? const ExportSnapshotService() {
+    if (hasActiveRoster) {
+      final now = DateTime.now();
+      final project = RosterProject(
+        id: '_compat_${now.millisecondsSinceEpoch}_${++_idCounter}',
+        name: projectName,
+        planningMode: PlanningMode.weekly,
+        currentWeek: currentWeek,
+        teachers: initialTeachers ?? const [],
+        createdAt: now,
+        updatedAt: now,
+      );
+      _projects = [project];
+      _activeProjectId = project.id;
+    } else {
+      _projects = [];
+      _activeProjectId = null;
+      _fallbackWeek = currentWeek;
+    }
+  }
 
   final WeekService _weekService;
   final RosterService _rosterService;
-  final TeacherService _teacherService;
   final CellTeacherCodec _cellTeacherCodec;
   final TextNormalizer _textNormalizer;
   final ExportSnapshotService _exportSnapshotService;
   static const String _multiTeacherLineBreakToken = r'\n';
-  Week _currentWeek;
-  bool _hasActiveRoster;
-  String _projectName;
+
+  static int _idCounter = 0;
+
+  List<RosterProject> _projects = [];
+  String? _activeProjectId;
+  Week _fallbackWeek = _kBlankWeek;
   RosterCellSelection? _selectedCell;
   List<Week>? _generatedMonthlyWeeks;
+  String? _teacherError;
 
-  Week get currentWeek => _currentWeek;
-  bool get hasActiveRoster => _hasActiveRoster;
-  String get projectName => _projectName;
+  static final Week _kBlankWeek = WeekService().buildWeek(
+    startDate: DateTime(2026, 2, 2),
+    endDate: DateTime(2026, 2, 6),
+    rows: const [],
+    schoolName: '',
+    principalName: '',
+  );
+
+  RosterProject? get _activeProject {
+    final id = _activeProjectId;
+    if (id == null) return null;
+    final idx = _projects.indexWhere((p) => p.id == id);
+    return idx >= 0 ? _projects[idx] : null;
+  }
+
+  // ── Public getters ──────────────────────────────────────────────────────────
+
+  Week get currentWeek => _activeProject?.currentWeek ?? _fallbackWeek;
+  bool get hasActiveRoster => _activeProjectId != null;
+  String get projectName => _activeProject?.name ?? '';
+  List<RosterProject> get projects => List.unmodifiable(_projects);
   RosterCellSelection? get selectedCell => _selectedCell;
   List<Week>? get generatedMonthlyWeeks => _generatedMonthlyWeeks;
-  List<Teacher> get teachers => _teacherService.all();
+  PlanningMode get activePlanningMode =>
+      _activeProject?.planningMode ?? PlanningMode.weekly;
+
+  // TeacherListStateAdapter
+  @override
+  bool get isLoading => false;
+  @override
+  String? get errorMessage => _teacherError;
+  @override
+  List<Teacher> get teachers => _activeProject?.teachers ?? const [];
+
   ExportSnapshot get exportSnapshot {
     final monthly = _generatedMonthlyWeeks;
     if (monthly != null && monthly.isNotEmpty) {
       return _exportSnapshotService.fromPreviewWeeks(monthly);
     }
-    return _exportSnapshotService.fromCurrentWeek(_currentWeek);
+    return _exportSnapshotService.fromCurrentWeek(currentWeek);
   }
+
+  // ── Factory constructors ────────────────────────────────────────────────────
 
   factory RosterState.blank() {
     final weekService = WeekService();
@@ -96,7 +146,6 @@ class RosterState extends ChangeNotifier {
     return RosterState(
       weekService: weekService,
       rosterService: const RosterService(),
-      teacherService: TeacherService(),
       hasActiveRoster: true,
       currentWeek: weekService.buildWeek(
         startDate: startDate,
@@ -105,31 +154,103 @@ class RosterState extends ChangeNotifier {
         schoolName: 'Örnek Okul',
         principalName: 'Müdür',
       ),
+      initialTeachers: TeacherService().all(),
     );
   }
 
+  // ── Multi-project API ───────────────────────────────────────────────────────
+
+  String createProject({
+    required String name,
+    required PlanningMode planningMode,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) {
+    final now = DateTime.now();
+    final start = startDate ?? now;
+    final end = endDate ?? now;
+    final id = 'proj_${now.millisecondsSinceEpoch}_${++_idCounter}';
+    final week = _weekService.buildWeek(
+      startDate: start,
+      endDate: end,
+      rows: const [],
+      schoolName: '',
+      principalName: '',
+      mode: planningMode,
+    );
+    final project = RosterProject(
+      id: id,
+      name: name,
+      planningMode: planningMode,
+      currentWeek: week,
+      teachers: const [],
+      createdAt: now,
+      updatedAt: now,
+    );
+    _projects = [..._projects, project];
+    _activeProjectId = id;
+    notifyListeners();
+    return id;
+  }
+
+  void openProject(String id) {
+    if (_projects.any((p) => p.id == id)) {
+      _activeProjectId = id;
+      _generatedMonthlyWeeks = null;
+      notifyListeners();
+    }
+  }
+
+  // ── Single-project compat API ───────────────────────────────────────────────
+
   void setProjectMetadata({required String name}) {
-    _projectName = name;
+    final p = _activeProject;
+    if (p != null) {
+      _updateActiveProject(p.copyWith(name: name, updatedAt: DateTime.now()));
+    }
     notifyListeners();
   }
 
   void generateMonthlyWeeks() {
-    _generatedMonthlyWeeks = _weekService.generateMonthlyFromWeek(_currentWeek);
+    _generatedMonthlyWeeks = _weekService.generateMonthlyFromWeek(currentWeek);
     notifyListeners();
   }
 
   void goToNextWeek() {
-    _currentWeek = _weekService.nextWeek(_currentWeek);
+    final p = _activeProject;
+    if (p != null) {
+      _updateActiveProject(p.copyWith(
+        currentWeek: _weekService.nextWeek(p.currentWeek),
+        updatedAt: DateTime.now(),
+      ));
+    } else {
+      _fallbackWeek = _weekService.nextWeek(_fallbackWeek);
+    }
     notifyListeners();
   }
 
   void goToPreviousWeek() {
-    _currentWeek = _weekService.previousWeek(_currentWeek);
+    final p = _activeProject;
+    if (p != null) {
+      _updateActiveProject(p.copyWith(
+        currentWeek: _weekService.previousWeek(p.currentWeek),
+        updatedAt: DateTime.now(),
+      ));
+    } else {
+      _fallbackWeek = _weekService.previousWeek(_fallbackWeek);
+    }
     notifyListeners();
   }
 
   List<Teacher> searchTeachers({String? query, bool availableOnly = false}) {
-    return _teacherService.search(query: query, availableOnly: availableOnly);
+    final all = teachers;
+    final cleanQuery = (query ?? '').replaceAll(RegExp(r'\s+'), ' ').trim().toLowerCase();
+    return all.where((t) {
+      if (availableOnly && !t.isActive) return false;
+      if (cleanQuery.isEmpty) return true;
+      return t.name.toLowerCase().contains(cleanQuery) ||
+          t.id.toLowerCase().contains(cleanQuery);
+    }).toList(growable: false);
   }
 
   void selectCell({required int rowIndex, required int dayIndex}) {
@@ -147,20 +268,15 @@ class RosterState extends ChangeNotifier {
     required int dayIndex,
     required String teacherName,
   }) {
-    final rowError = _validateCellIndexes(
-      rowIndex: rowIndex,
-      dayIndex: dayIndex,
-    );
-    if (rowError != null) {
-      return rowError;
-    }
+    final rowError = _validateCellIndexes(rowIndex: rowIndex, dayIndex: dayIndex);
+    if (rowError != null) return rowError;
 
-    final rows = _currentWeek.rows.toList(growable: true);
+    final rows = currentWeek.rows.toList(growable: true);
     final row = rows[rowIndex];
     final values = row.teachersByDay.toList(growable: true);
     values[dayIndex] = teacherName;
     rows[rowIndex] = row.copyWith(teachersByDay: values);
-    _currentWeek = _currentWeek.copyWith(rows: rows);
+    _setCurrentWeek(currentWeek.copyWith(rows: rows));
     notifyListeners();
     return null;
   }
@@ -178,26 +294,19 @@ class RosterState extends ChangeNotifier {
     required int dayIndex,
     required String teacherName,
   }) {
-    final rowError = _validateCellIndexes(
-      rowIndex: rowIndex,
-      dayIndex: dayIndex,
-    );
-    if (rowError != null) {
-      return rowError;
-    }
+    final rowError = _validateCellIndexes(rowIndex: rowIndex, dayIndex: dayIndex);
+    if (rowError != null) return rowError;
 
-    final rows = _currentWeek.rows.toList(growable: true);
+    final rows = currentWeek.rows.toList(growable: true);
     final row = rows[rowIndex];
     final values = row.teachersByDay.toList(growable: true);
     final currentCell = _decodeCellTeachers(values[dayIndex]);
     final nextCell = _cellTeacherCodec.addTeacher(currentCell, teacherName);
-    if (currentCell == nextCell) {
-      return null;
-    }
+    if (currentCell == nextCell) return null;
 
     values[dayIndex] = _encodeCellTeachers(nextCell);
     rows[rowIndex] = row.copyWith(teachersByDay: values);
-    _currentWeek = _currentWeek.copyWith(rows: rows);
+    _setCurrentWeek(currentWeek.copyWith(rows: rows));
     notifyListeners();
     return null;
   }
@@ -207,26 +316,19 @@ class RosterState extends ChangeNotifier {
     required int dayIndex,
     required String teacherName,
   }) {
-    final rowError = _validateCellIndexes(
-      rowIndex: rowIndex,
-      dayIndex: dayIndex,
-    );
-    if (rowError != null) {
-      return rowError;
-    }
+    final rowError = _validateCellIndexes(rowIndex: rowIndex, dayIndex: dayIndex);
+    if (rowError != null) return rowError;
 
-    final rows = _currentWeek.rows.toList(growable: true);
+    final rows = currentWeek.rows.toList(growable: true);
     final row = rows[rowIndex];
     final values = row.teachersByDay.toList(growable: true);
     final currentCell = _decodeCellTeachers(values[dayIndex]);
     final nextCell = _cellTeacherCodec.removeTeacher(currentCell, teacherName);
-    if (currentCell == nextCell) {
-      return null;
-    }
+    if (currentCell == nextCell) return null;
 
     values[dayIndex] = _encodeCellTeachers(nextCell);
     rows[rowIndex] = row.copyWith(teachersByDay: values);
-    _currentWeek = _currentWeek.copyWith(rows: rows);
+    _setCurrentWeek(currentWeek.copyWith(rows: rows));
     notifyListeners();
     return null;
   }
@@ -235,70 +337,51 @@ class RosterState extends ChangeNotifier {
     required int rowIndex,
     required int dayIndex,
   }) {
-    final rowError = _validateCellIndexes(
-      rowIndex: rowIndex,
-      dayIndex: dayIndex,
-    );
-    if (rowError != null) {
-      throw FormatException(rowError);
-    }
+    final rowError = _validateCellIndexes(rowIndex: rowIndex, dayIndex: dayIndex);
+    if (rowError != null) throw FormatException(rowError);
 
     return _cellTeacherCodec.parse(
-      _decodeCellTeachers(_currentWeek.rows[rowIndex].teachersByDay[dayIndex]),
+      _decodeCellTeachers(currentWeek.rows[rowIndex].teachersByDay[dayIndex]),
     );
   }
 
   int clearAssignmentsForTeacher(String teacherName) {
     final canonicalTeacher = _textNormalizer.canonical(teacherName);
-    if (canonicalTeacher.isEmpty) {
-      return 0;
-    }
+    if (canonicalTeacher.isEmpty) return 0;
 
     var clearedCount = 0;
-    final updatedRows = _currentWeek.rows
-        .map((row) {
-          final teachers = row.teachersByDay.toList(growable: true);
-          var changed = false;
+    final updatedRows = currentWeek.rows.map((row) {
+      final tbd = row.teachersByDay.toList(growable: true);
+      var changed = false;
+      for (var i = 0; i < tbd.length; i++) {
+        if (_textNormalizer.canonicalEquals(tbd[i], teacherName)) {
+          tbd[i] = '';
+          clearedCount++;
+          changed = true;
+        }
+      }
+      if (!changed) return row;
+      return row.copyWith(teachersByDay: tbd);
+    }).toList(growable: false);
 
-          for (var i = 0; i < teachers.length; i++) {
-            if (_textNormalizer.canonicalEquals(teachers[i], teacherName)) {
-              teachers[i] = '';
-              clearedCount += 1;
-              changed = true;
-            }
-          }
+    if (clearedCount == 0) return 0;
 
-          if (!changed) {
-            return row;
-          }
-          return row.copyWith(teachersByDay: teachers);
-        })
-        .toList(growable: false);
-
-    if (clearedCount == 0) {
-      return 0;
-    }
-
-    _currentWeek = _currentWeek.copyWith(rows: updatedRows);
+    _setCurrentWeek(currentWeek.copyWith(rows: updatedRows));
     notifyListeners();
     return clearedCount;
   }
 
-  List<RosterRow> rotateRowsForward(List<RosterRow> rows) {
-    return _rosterService.rotateForward(rows);
-  }
+  List<RosterRow> rotateRowsForward(List<RosterRow> rows) =>
+      _rosterService.rotateForward(rows);
 
-  List<RosterRow> rotateRowsBackward(List<RosterRow> rows) {
-    return _rosterService.rotateBackward(rows);
-  }
+  List<RosterRow> rotateRowsBackward(List<RosterRow> rows) =>
+      _rosterService.rotateBackward(rows);
 
-  List<RosterRow> rotateRowsDayForward(List<RosterRow> rows, int dayIndex) {
-    return _rosterService.rotateDayForward(rows, dayIndex);
-  }
+  List<RosterRow> rotateRowsDayForward(List<RosterRow> rows, int dayIndex) =>
+      _rosterService.rotateDayForward(rows, dayIndex);
 
-  List<RosterRow> rotateRowsDayBackward(List<RosterRow> rows, int dayIndex) {
-    return _rosterService.rotateDayBackward(rows, dayIndex);
-  }
+  List<RosterRow> rotateRowsDayBackward(List<RosterRow> rows, int dayIndex) =>
+      _rosterService.rotateDayBackward(rows, dayIndex);
 
   String? saveWeekDraft({
     required DateTime startDate,
@@ -314,7 +397,7 @@ class RosterState extends ChangeNotifier {
 
     try {
       final preparedRows = _rosterService.prepareRowsForSave(rows);
-      _currentWeek = _weekService.buildWeek(
+      final week = _weekService.buildWeek(
         startDate: startDate,
         endDate: endDate,
         rows: preparedRows,
@@ -322,7 +405,30 @@ class RosterState extends ChangeNotifier {
         principalName: principalName,
         mode: mode,
       );
-      _hasActiveRoster = true;
+
+      final p = _activeProject;
+      if (p != null) {
+        _updateActiveProject(p.copyWith(
+          currentWeek: week,
+          planningMode: mode,
+          updatedAt: DateTime.now(),
+        ));
+      } else {
+        // No active project: create one for backward compat
+        final now = DateTime.now();
+        final id = 'proj_${now.millisecondsSinceEpoch}';
+        final project = RosterProject(
+          id: id,
+          name: '',
+          planningMode: mode,
+          currentWeek: week,
+          teachers: const [],
+          createdAt: now,
+          updatedAt: now,
+        );
+        _projects = [project];
+        _activeProjectId = id;
+      }
       notifyListeners();
       return null;
     } on FormatException catch (error) {
@@ -330,16 +436,82 @@ class RosterState extends ChangeNotifier {
     }
   }
 
-  String _decodeCellTeachers(String value) {
-    return value.replaceAll(_multiTeacherLineBreakToken, '\n');
+  // ── TeacherListStateAdapter ─────────────────────────────────────────────────
+
+  @override
+  Future<String?> createTeacher(Teacher teacher) {
+    _teacherError = null;
+    final p = _activeProject;
+    if (p == null) return Future.value('Aktif proje yok.');
+    if (!teacher.isValid) return Future.value('Geçersiz öğretmen.');
+    if (p.teachers.any((t) => t.id == teacher.id)) {
+      return Future.value('Bu kimlikle zaten bir öğretmen var.');
+    }
+    _updateActiveProject(p.copyWith(
+      teachers: [...p.teachers, teacher],
+      updatedAt: DateTime.now(),
+    ));
+    notifyListeners();
+    return Future.value(null);
   }
 
-  String _encodeCellTeachers(String value) {
-    return value.replaceAll('\n', _multiTeacherLineBreakToken);
+  @override
+  Future<String?> updateTeacher(Teacher teacher) {
+    _teacherError = null;
+    final p = _activeProject;
+    if (p == null) return Future.value('Aktif proje yok.');
+    if (!teacher.isValid) return Future.value('Geçersiz öğretmen.');
+    final idx = p.teachers.indexWhere((t) => t.id == teacher.id);
+    if (idx < 0) return Future.value('Öğretmen bulunamadı.');
+    final updated = p.teachers.toList(growable: true)..[idx] = teacher;
+    _updateActiveProject(p.copyWith(
+      teachers: updated,
+      updatedAt: DateTime.now(),
+    ));
+    notifyListeners();
+    return Future.value(null);
   }
+
+  @override
+  Future<String?> deleteTeacher(String id) {
+    _teacherError = null;
+    final p = _activeProject;
+    if (p == null) return Future.value('Aktif proje yok.');
+    final updated = p.teachers.where((t) => t.id != id).toList();
+    _updateActiveProject(p.copyWith(
+      teachers: updated,
+      updatedAt: DateTime.now(),
+    ));
+    notifyListeners();
+    return Future.value(null);
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+
+  void _updateActiveProject(RosterProject updated) {
+    final idx = _projects.indexWhere((p) => p.id == updated.id);
+    if (idx < 0) return;
+    final list = _projects.toList(growable: true)..[idx] = updated;
+    _projects = list;
+  }
+
+  void _setCurrentWeek(Week week) {
+    final p = _activeProject;
+    if (p != null) {
+      _updateActiveProject(p.copyWith(currentWeek: week, updatedAt: DateTime.now()));
+    } else {
+      _fallbackWeek = week;
+    }
+  }
+
+  String _decodeCellTeachers(String value) =>
+      value.replaceAll(_multiTeacherLineBreakToken, '\n');
+
+  String _encodeCellTeachers(String value) =>
+      value.replaceAll('\n', _multiTeacherLineBreakToken);
 
   String? _validateCellIndexes({required int rowIndex, required int dayIndex}) {
-    if (rowIndex < 0 || rowIndex >= _currentWeek.rows.length) {
+    if (rowIndex < 0 || rowIndex >= currentWeek.rows.length) {
       return 'Geçersiz satır seçimi.';
     }
     if (dayIndex < 0 || dayIndex >= rosterDayCount) {

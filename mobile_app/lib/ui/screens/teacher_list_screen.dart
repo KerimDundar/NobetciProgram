@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/teacher.dart';
 import '../../models/week.dart';
-import '../../state/teacher_state.dart';
+import '../../state/teacher_list_state.dart';
 import '../widgets/teacher_selection_panel.dart';
 
 class TeacherListScreen extends StatelessWidget {
@@ -13,7 +13,7 @@ class TeacherListScreen extends StatelessWidget {
     this.onTeacherDeletedFromRoster,
   });
 
-  final TeacherState state;
+  final TeacherListStateAdapter state;
   final Week? currentWeek;
   final int Function(Teacher teacher)? onTeacherDeletedFromRoster;
 
@@ -132,7 +132,7 @@ enum _TeacherEditAction { updated, deleted }
 class _TeacherCreateForm extends StatefulWidget {
   const _TeacherCreateForm({required this.state});
 
-  final TeacherState state;
+  final TeacherListStateAdapter state;
 
   @override
   State<_TeacherCreateForm> createState() => _TeacherCreateFormState();
@@ -280,7 +280,7 @@ class _TeacherCreateFormState extends State<_TeacherCreateForm> {
 class _TeacherEditForm extends StatefulWidget {
   const _TeacherEditForm({required this.state, required this.teacher});
 
-  final TeacherState state;
+  final TeacherListStateAdapter state;
   final Teacher teacher;
 
   @override
