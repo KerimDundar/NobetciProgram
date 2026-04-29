@@ -1,4 +1,8 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/planning_mode.dart';
 import '../models/roster_project.dart';
@@ -56,6 +60,7 @@ class RosterState extends ChangeNotifier implements TeacherListStateAdapter {
   final TextNormalizer _textNormalizer;
   final ExportSnapshotService _exportSnapshotService;
   static const String _multiTeacherLineBreakToken = r'\n';
+  static const String _storageKey = 'roster_projects_state_v1';
 
   static int _idCounter = 0;
 
@@ -158,6 +163,39 @@ class RosterState extends ChangeNotifier implements TeacherListStateAdapter {
     );
   }
 
+  // ── Persistence ─────────────────────────────────────────────────────────────
+
+  Future<void> load() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_storageKey);
+      if (raw == null) return;
+      final data = jsonDecode(raw) as Map<String, dynamic>;
+      final projectsList = (data['projects'] as List<dynamic>)
+          .map((p) => RosterProject.fromJson(p as Map<String, dynamic>))
+          .toList();
+      _projects = projectsList;
+      _activeProjectId = data['activeProjectId'] as String?;
+    } catch (_) {
+      // corrupt or missing — keep blank state
+    } finally {
+      notifyListeners();
+    }
+  }
+
+  Future<void> persistState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final data = <String, dynamic>{
+        'activeProjectId': _activeProjectId,
+        'projects': _projects.map((p) => p.toJson()).toList(),
+      };
+      await prefs.setString(_storageKey, jsonEncode(data));
+    } catch (_) {
+      // ignore write errors
+    }
+  }
+
   // ── Multi-project API ───────────────────────────────────────────────────────
 
   String createProject({
@@ -190,6 +228,7 @@ class RosterState extends ChangeNotifier implements TeacherListStateAdapter {
     _projects = [..._projects, project];
     _activeProjectId = id;
     notifyListeners();
+    unawaited(persistState());
     return id;
   }
 
@@ -198,6 +237,7 @@ class RosterState extends ChangeNotifier implements TeacherListStateAdapter {
       _activeProjectId = id;
       _generatedMonthlyWeeks = null;
       notifyListeners();
+      unawaited(persistState());
     }
   }
 
@@ -209,6 +249,7 @@ class RosterState extends ChangeNotifier implements TeacherListStateAdapter {
       _updateActiveProject(p.copyWith(name: name, updatedAt: DateTime.now()));
     }
     notifyListeners();
+    unawaited(persistState());
   }
 
   void generateMonthlyWeeks() {
@@ -227,6 +268,7 @@ class RosterState extends ChangeNotifier implements TeacherListStateAdapter {
       _fallbackWeek = _weekService.nextWeek(_fallbackWeek);
     }
     notifyListeners();
+    unawaited(persistState());
   }
 
   void goToPreviousWeek() {
@@ -240,6 +282,7 @@ class RosterState extends ChangeNotifier implements TeacherListStateAdapter {
       _fallbackWeek = _weekService.previousWeek(_fallbackWeek);
     }
     notifyListeners();
+    unawaited(persistState());
   }
 
   List<Teacher> searchTeachers({String? query, bool availableOnly = false}) {
@@ -278,6 +321,7 @@ class RosterState extends ChangeNotifier implements TeacherListStateAdapter {
     rows[rowIndex] = row.copyWith(teachersByDay: values);
     _setCurrentWeek(currentWeek.copyWith(rows: rows));
     notifyListeners();
+    unawaited(persistState());
     return null;
   }
 
@@ -308,6 +352,7 @@ class RosterState extends ChangeNotifier implements TeacherListStateAdapter {
     rows[rowIndex] = row.copyWith(teachersByDay: values);
     _setCurrentWeek(currentWeek.copyWith(rows: rows));
     notifyListeners();
+    unawaited(persistState());
     return null;
   }
 
@@ -330,6 +375,7 @@ class RosterState extends ChangeNotifier implements TeacherListStateAdapter {
     rows[rowIndex] = row.copyWith(teachersByDay: values);
     _setCurrentWeek(currentWeek.copyWith(rows: rows));
     notifyListeners();
+    unawaited(persistState());
     return null;
   }
 
@@ -368,6 +414,7 @@ class RosterState extends ChangeNotifier implements TeacherListStateAdapter {
 
     _setCurrentWeek(currentWeek.copyWith(rows: updatedRows));
     notifyListeners();
+    unawaited(persistState());
     return clearedCount;
   }
 
@@ -430,6 +477,7 @@ class RosterState extends ChangeNotifier implements TeacherListStateAdapter {
         _activeProjectId = id;
       }
       notifyListeners();
+      unawaited(persistState());
       return null;
     } on FormatException catch (error) {
       return error.message;
@@ -439,51 +487,54 @@ class RosterState extends ChangeNotifier implements TeacherListStateAdapter {
   // ── TeacherListStateAdapter ─────────────────────────────────────────────────
 
   @override
-  Future<String?> createTeacher(Teacher teacher) {
+  Future<String?> createTeacher(Teacher teacher) async {
     _teacherError = null;
     final p = _activeProject;
-    if (p == null) return Future.value('Aktif proje yok.');
-    if (!teacher.isValid) return Future.value('Geçersiz öğretmen.');
+    if (p == null) return 'Aktif proje yok.';
+    if (!teacher.isValid) return 'Geçersiz öğretmen.';
     if (p.teachers.any((t) => t.id == teacher.id)) {
-      return Future.value('Bu kimlikle zaten bir öğretmen var.');
+      return 'Bu kimlikle zaten bir öğretmen var.';
     }
     _updateActiveProject(p.copyWith(
       teachers: [...p.teachers, teacher],
       updatedAt: DateTime.now(),
     ));
     notifyListeners();
-    return Future.value(null);
+    await persistState();
+    return null;
   }
 
   @override
-  Future<String?> updateTeacher(Teacher teacher) {
+  Future<String?> updateTeacher(Teacher teacher) async {
     _teacherError = null;
     final p = _activeProject;
-    if (p == null) return Future.value('Aktif proje yok.');
-    if (!teacher.isValid) return Future.value('Geçersiz öğretmen.');
+    if (p == null) return 'Aktif proje yok.';
+    if (!teacher.isValid) return 'Geçersiz öğretmen.';
     final idx = p.teachers.indexWhere((t) => t.id == teacher.id);
-    if (idx < 0) return Future.value('Öğretmen bulunamadı.');
+    if (idx < 0) return 'Öğretmen bulunamadı.';
     final updated = p.teachers.toList(growable: true)..[idx] = teacher;
     _updateActiveProject(p.copyWith(
       teachers: updated,
       updatedAt: DateTime.now(),
     ));
     notifyListeners();
-    return Future.value(null);
+    await persistState();
+    return null;
   }
 
   @override
-  Future<String?> deleteTeacher(String id) {
+  Future<String?> deleteTeacher(String id) async {
     _teacherError = null;
     final p = _activeProject;
-    if (p == null) return Future.value('Aktif proje yok.');
+    if (p == null) return 'Aktif proje yok.';
     final updated = p.teachers.where((t) => t.id != id).toList();
     _updateActiveProject(p.copyWith(
       teachers: updated,
       updatedAt: DateTime.now(),
     ));
     notifyListeners();
-    return Future.value(null);
+    await persistState();
+    return null;
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────

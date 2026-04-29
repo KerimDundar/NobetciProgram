@@ -19,7 +19,10 @@
       "Bash(python3 -c ' *)",
       "PowerShell(adb devices 2>&1)",
       "Bash(Get-Content \"C:\\\\Users\\\\BORUGU~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Git-NobetciProgram-mobile-app\\\\90ec57b9-30ae-47c1-a0fa-5423a609509d\\\\tasks\\\\bs8bn5206.output\" -Wait)",
-      "Bash(Select-String -Pattern \"Installed|error|Error|FAILED|Built|Syncing|Running on|Flutter run|hot reload|debug\")"
+      "Bash(Select-String -Pattern \"Installed|error|Error|FAILED|Built|Syncing|Running on|Flutter run|hot reload|debug\")",
+      "PowerShell(flutter emulators 2>&1)",
+      "PowerShell(flutter emulators --launch Pixel_7_API_36 2>&1)",
+      "PowerShell(Get-Item \"d:\\\\Git\\\\NobetciProgram\\\\mobile_app\\\\build\\\\app\\\\outputs\\\\flutter-apk\\\\app-release.apk\" | Select-Object FullName, @{Name=\"Boyut_MB\";Expression={[math]::Round\\($_.Length/1MB,1\\)}}, LastWriteTime)"
     ]
   }
 }

@@ -25,6 +25,7 @@ class _NobetciProgramAppState extends State<NobetciProgramApp> {
   void initState() {
     super.initState();
     _appSettingsState.load();
+    _rosterState.load();
   }
 
   @override
