@@ -1,4 +1,4 @@
-package com.example.nobetci_program_mobile
+package com.nobetcizelgesi.app
 
 import android.app.Activity
 import android.content.Intent

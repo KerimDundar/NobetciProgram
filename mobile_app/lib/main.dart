@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'state/app_settings_state.dart';
 import 'state/roster_state.dart';
 import 'ui/screens/welcome_screen.dart';
 import 'ui/theme/app_theme.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await MobileAds.instance.initialize();
   runApp(const NobetciProgramApp());
 }
 

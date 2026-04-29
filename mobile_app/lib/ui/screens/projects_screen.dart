@@ -179,7 +179,19 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
           if (projectId != null) {
             widget.rosterState.openProject(projectId);
           }
-          Navigator.of(context).pop();
+          final navigator = Navigator.of(context);
+          if (navigator.canPop()) {
+            navigator.pop();
+          } else {
+            navigator.pushReplacement(
+              MaterialPageRoute<void>(
+                builder: (_) => RosterHomeScreen(
+                  state: widget.rosterState,
+                  appSettingsState: widget.appSettingsState,
+                ),
+              ),
+            );
+          }
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(

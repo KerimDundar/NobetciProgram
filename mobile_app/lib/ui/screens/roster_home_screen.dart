@@ -4,6 +4,7 @@ import '../../models/planning_mode.dart';
 import '../../models/week.dart';
 import '../../services/export_file_service.dart';
 import '../../services/grid_cell_status_service.dart';
+import '../../services/interstitial_ad_service.dart';
 import '../../services/week_grid_projection_service.dart';
 import '../../services/week_service.dart';
 import '../../state/app_settings_state.dart';
@@ -659,6 +660,20 @@ class _ExportActions extends StatefulWidget {
 
 class _ExportActionsState extends State<_ExportActions> {
   ExportFileType? _exportingType;
+  late final InterstitialAdService _interstitialAdService;
+
+  @override
+  void initState() {
+    super.initState();
+    _interstitialAdService = InterstitialAdService();
+    _interstitialAdService.preload();
+  }
+
+  @override
+  void dispose() {
+    _interstitialAdService.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -708,27 +723,13 @@ class _ExportActionsState extends State<_ExportActions> {
     });
 
     try {
-      final snapshot = widget.state.exportSnapshot;
-      final result = switch (type) {
-        ExportFileType.pdf => await widget.exportFileService.exportPdf(
-          snapshot,
-        ),
-        ExportFileType.excel => await widget.exportFileService.exportExcel(
-          snapshot,
-        ),
-      };
-
-      if (!mounted) {
-        return;
+      if (type == ExportFileType.pdf) {
+        await _interstitialAdService.showBeforePdfExport(
+          onContinue: () => _runExport(type),
+        );
+      } else {
+        await _runExport(type);
       }
-
-      if (result == null) {
-        _showMessage('Dışa aktarma iptal edildi.');
-        return;
-      }
-
-      final label = type == ExportFileType.pdf ? 'PDF' : 'Excel';
-      _showMessage('$label kaydedildi: ${result.path}');
     } on ExportFileException catch (error) {
       if (mounted) {
         _showMessage(error.message);
@@ -748,6 +749,25 @@ class _ExportActionsState extends State<_ExportActions> {
         });
       }
     }
+  }
+
+  Future<void> _runExport(ExportFileType type) async {
+    final snapshot = widget.state.exportSnapshot;
+    final result = switch (type) {
+      ExportFileType.pdf => await widget.exportFileService.exportPdf(snapshot),
+      ExportFileType.excel =>
+        await widget.exportFileService.exportExcel(snapshot),
+    };
+
+    if (!mounted) return;
+
+    if (result == null) {
+      _showMessage('Dışa aktarma iptal edildi.');
+      return;
+    }
+
+    final label = type == ExportFileType.pdf ? 'PDF' : 'Excel';
+    _showMessage('$label kaydedildi: ${result.path}');
   }
 
   void _showMessage(String message) {
