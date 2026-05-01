@@ -8,9 +8,11 @@ import '../../services/interstitial_ad_service.dart';
 import '../../services/week_grid_projection_service.dart';
 import '../../services/week_service.dart';
 import '../../state/app_settings_state.dart';
+import '../../state/premium_state.dart';
 import '../../state/roster_state.dart';
 import '../../state/teacher_list_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/premium_paywall_dialog.dart';
 import 'edit_week_screen.dart';
 import 'projects_screen.dart';
 import 'teacher_list_screen.dart';
@@ -23,12 +25,14 @@ class RosterHomeScreen extends StatefulWidget {
     required this.state,
     this.teacherState,
     this.appSettingsState,
+    this.premiumState,
     this.exportFileService = const ExportFileService(),
   });
 
   final RosterState state;
   final TeacherListStateAdapter? teacherState;
   final AppSettingsState? appSettingsState;
+  final PremiumState? premiumState;
   final ExportFileService exportFileService;
 
   @override
@@ -155,6 +159,7 @@ class _RosterHomeScreenState extends State<RosterHomeScreen> {
                           _ExportActions(
                             state: widget.state,
                             exportFileService: widget.exportFileService,
+                            premiumState: widget.premiumState,
                           ),
                           const SizedBox(height: 16),
                           if (week.rows.isEmpty) ...[
@@ -218,6 +223,7 @@ class _RosterHomeScreenState extends State<RosterHomeScreen> {
         builder: (_) => ProjectsScreen(
           rosterState: widget.state,
           appSettingsState: widget.appSettingsState,
+          premiumState: widget.premiumState,
         ),
       ),
     );
@@ -649,10 +655,15 @@ class _DuplicateLocationBadge extends StatelessWidget {
 }
 
 class _ExportActions extends StatefulWidget {
-  const _ExportActions({required this.state, required this.exportFileService});
+  const _ExportActions({
+    required this.state,
+    required this.exportFileService,
+    this.premiumState,
+  });
 
   final RosterState state;
   final ExportFileService exportFileService;
+  final PremiumState? premiumState;
 
   @override
   State<_ExportActions> createState() => _ExportActionsState();
@@ -724,9 +735,18 @@ class _ExportActionsState extends State<_ExportActions> {
 
     try {
       if (type == ExportFileType.pdf) {
-        await _interstitialAdService.showBeforePdfExport(
-          onContinue: () => _runExport(type),
-        );
+        final premiumState = widget.premiumState;
+        final isPremium = premiumState?.isPremium ?? false;
+        if (isPremium) {
+          await _runExport(type);
+        } else if (premiumState != null &&
+            !widget.state.isActiveProjectAccessible(false)) {
+          await PremiumPaywallDialog.show(context, premiumState);
+        } else {
+          await _interstitialAdService.showBeforePdfExport(
+            onContinue: () => _runExport(type),
+          );
+        }
       } else {
         await _runExport(type);
       }

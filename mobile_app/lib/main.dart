@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
+import 'services/purchase_service.dart';
 import 'state/app_settings_state.dart';
+import 'state/premium_state.dart';
 import 'state/roster_state.dart';
 import 'ui/screens/welcome_screen.dart';
 import 'ui/theme/app_theme.dart';
@@ -23,18 +25,23 @@ class NobetciProgramApp extends StatefulWidget {
 class _NobetciProgramAppState extends State<NobetciProgramApp> {
   late final RosterState _rosterState = RosterState.blank();
   late final AppSettingsState _appSettingsState = AppSettingsState();
+  late final PremiumState _premiumState = PremiumState(
+    purchaseService: RealPurchaseService(),
+  );
 
   @override
   void initState() {
     super.initState();
     _appSettingsState.load();
     _rosterState.load();
+    _premiumState.initialize();
   }
 
   @override
   void dispose() {
     _appSettingsState.dispose();
     _rosterState.dispose();
+    _premiumState.dispose();
     super.dispose();
   }
 
@@ -54,6 +61,7 @@ class _NobetciProgramAppState extends State<NobetciProgramApp> {
       home: WelcomeScreen(
         rosterState: _rosterState,
         appSettingsState: _appSettingsState,
+        premiumState: _premiumState,
       ),
     );
   }

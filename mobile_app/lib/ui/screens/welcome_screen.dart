@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../state/app_settings_state.dart';
+import '../../state/premium_state.dart';
 import '../../state/roster_state.dart';
 import '../theme/app_theme.dart';
 import 'projects_screen.dart';
@@ -10,10 +11,12 @@ class WelcomeScreen extends StatelessWidget {
     super.key,
     required this.rosterState,
     required this.appSettingsState,
+    this.premiumState,
   });
 
   final RosterState rosterState;
   final AppSettingsState appSettingsState;
+  final PremiumState? premiumState;
 
   @override
   Widget build(BuildContext context) {
@@ -143,6 +146,7 @@ class WelcomeScreen extends StatelessWidget {
         builder: (_) => ProjectsScreen(
           rosterState: rosterState,
           appSettingsState: appSettingsState,
+          premiumState: premiumState,
         ),
       ),
     );

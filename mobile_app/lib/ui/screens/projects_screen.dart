@@ -4,8 +4,10 @@ import '../../models/planning_mode.dart';
 import '../../models/week.dart';
 import '../../services/week_service.dart';
 import '../../state/app_settings_state.dart';
+import '../../state/premium_state.dart';
 import '../../state/roster_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/premium_paywall_dialog.dart';
 import 'edit_week_screen.dart';
 import 'roster_home_screen.dart';
 
@@ -44,18 +46,33 @@ class ProjectsScreen extends StatefulWidget {
     super.key,
     required this.rosterState,
     this.appSettingsState,
+    this.premiumState,
   });
 
   final RosterState rosterState;
   final AppSettingsState? appSettingsState;
+  final PremiumState? premiumState;
 
   @override
   State<ProjectsScreen> createState() => _ProjectsScreenState();
 }
 
 class _ProjectsScreenState extends State<ProjectsScreen> {
+  bool get _isPremium => widget.premiumState?.isPremium ?? false;
+
   @override
   Widget build(BuildContext context) {
+    final premiumState = widget.premiumState;
+    if (premiumState != null) {
+      return AnimatedBuilder(
+        animation: premiumState,
+        builder: (context, _) => _buildRosterListener(),
+      );
+    }
+    return _buildRosterListener();
+  }
+
+  Widget _buildRosterListener() {
     return AnimatedBuilder(
       animation: widget.rosterState,
       builder: (context, _) {
@@ -63,7 +80,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
           appBar: AppBar(title: const Text('Çizelgelerim')),
           floatingActionButton: FloatingActionButton(
             key: const Key('projects-new-button'),
-            onPressed: () => _openNewProjectDialog(context),
+            onPressed: () => _onNewProjectTap(context),
             child: const Icon(Icons.add),
           ),
           body: widget.rosterState.hasActiveRoster
@@ -98,7 +115,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
             const SizedBox(height: 28),
             FilledButton.icon(
               key: const Key('projects-create-button'),
-              onPressed: () => _openNewProjectDialog(context),
+              onPressed: () => _onNewProjectTap(context),
               icon: const Icon(Icons.add),
               label: const Text('Yeni çizelge oluştur'),
             ),
@@ -124,7 +141,6 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     final projects = state.projects;
 
     if (projects.isEmpty) {
-      // Backward compat: single active roster without explicit project list
       return _buildSingleCard(
         context,
         name: state.projectName.isNotEmpty
@@ -134,6 +150,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         mode: displayMode,
         isFirst: true,
         projectId: null,
+        isLocked: false,
       );
     }
 
@@ -152,6 +169,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               mode: displayMode,
               isFirst: i == 0,
               projectId: projects[i].id,
+              isLocked: !state.canAccessProject(projects[i].id, _isPremium),
             ),
           ),
       ],
@@ -165,6 +183,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     required PlanningMode mode,
     required bool isFirst,
     required String? projectId,
+    required bool isLocked,
   }) {
     final planLabel =
         mode == PlanningMode.monthly ? 'Aylık Plan' : 'Haftalık Plan';
@@ -175,24 +194,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     return Card(
       child: InkWell(
         key: isFirst ? const Key('projects-roster-card') : null,
-        onTap: () {
-          if (projectId != null) {
-            widget.rosterState.openProject(projectId);
-          }
-          final navigator = Navigator.of(context);
-          if (navigator.canPop()) {
-            navigator.pop();
-          } else {
-            navigator.pushReplacement(
-              MaterialPageRoute<void>(
-                builder: (_) => RosterHomeScreen(
-                  state: widget.rosterState,
-                  appSettingsState: widget.appSettingsState,
-                ),
-              ),
-            );
-          }
-        },
+        onTap: () => _onProjectTap(context, projectId, isLocked),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -221,12 +223,60 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right),
+              if (isLocked)
+                const Icon(Icons.lock_outline, size: 20)
+              else
+                const Icon(Icons.chevron_right),
             ],
           ),
         ),
       ),
     );
+  }
+
+  void _onProjectTap(
+    BuildContext context,
+    String? projectId,
+    bool isLocked,
+  ) {
+    if (isLocked) {
+      final premiumState = widget.premiumState;
+      if (premiumState != null) {
+        PremiumPaywallDialog.show(context, premiumState);
+      }
+      return;
+    }
+
+    if (projectId != null) {
+      widget.rosterState.openProject(projectId);
+    }
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+    } else {
+      navigator.pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => RosterHomeScreen(
+            state: widget.rosterState,
+            appSettingsState: widget.appSettingsState,
+            premiumState: widget.premiumState,
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onNewProjectTap(BuildContext context) async {
+    if (!widget.rosterState.canCreateProject(_isPremium)) {
+      final premiumState = widget.premiumState;
+      if (premiumState != null) {
+        await PremiumPaywallDialog.show(context, premiumState);
+      }
+      return;
+    }
+    if (mounted) {
+      await _openNewProjectDialog(context);
+    }
   }
 
   Future<void> _openNewProjectDialog(BuildContext context) async {
@@ -273,6 +323,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
           builder: (_) => RosterHomeScreen(
             state: widget.rosterState,
             appSettingsState: widget.appSettingsState,
+            premiumState: widget.premiumState,
           ),
         ),
       );

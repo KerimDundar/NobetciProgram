@@ -26,7 +26,24 @@
       "PowerShell(Remove-Item -Recurse -Force \"d:\\\\Git\\\\NobetciProgram\\\\mobile_app\\\\android\\\\app\\\\src\\\\main\\\\kotlin\\\\com\\\\example\" -Confirm:$false)",
       "PowerShell(Get-Item \"d:\\\\Git\\\\NobetciProgram\\\\mobile_app\\\\build\\\\app\\\\outputs\\\\bundle\\\\release\\\\app-release.aab\" | Select-Object FullName, @{N=\"MB\";E={[math]::Round\\($_.Length/1MB,1\\)}}, LastWriteTime)",
       "PowerShell(Get-Command keytool -ErrorAction SilentlyContinue)",
-      "Read(//c/Users/BoruGurduu/.puro/shared/pub_cache/hosted/**)"
+      "Read(//c/Users/BoruGurduu/.puro/shared/pub_cache/hosted/**)",
+      "Bash(puro dart *)",
+      "Read(//c/Users/BoruGurduu/.gradle/wrapper/dists/gradle-8.14-all/**)",
+      "PowerShell($apk = \"d:\\\\Git\\\\NobetciProgram\\\\mobile_app\\\\build\\\\app\\\\outputs\\\\flutter-apk\\\\app-release.apk\"; if \\(Test-Path $apk\\) { $size = \\(Get-Item $apk\\).Length / 1MB; \"EXISTS: $apk`nSize: $\\([math]::Round\\($size,1\\)\\) MB`nModified: $\\(\\(Get-Item $apk\\).LastWriteTime\\)\" } else { \"NOT READY YET\" })",
+      "PowerShell(Get-Process -Name \"java\" -ErrorAction SilentlyContinue)",
+      "Read(//c/Users/BoruGurduu/.gradle/.tmp/**)",
+      "Read(//c/Users/BoruGurduu/.gradle/daemon/8.14/**)",
+      "Read(//c/Users/BoruGurduu/.gradle/daemon/**)",
+      "PowerShell($apk = \"d:\\\\Git\\\\NobetciProgram\\\\mobile_app\\\\build\\\\app\\\\outputs\\\\flutter-apk\\\\app-release.apk\"; if \\(Test-Path $apk\\) { $size = \\(Get-Item $apk\\).Length / 1MB; \"TAMAM — $\\([math]::Round\\($size,1\\)\\) MB`n$apk\" } else { $j = Get-Process java -ErrorAction SilentlyContinue | Where-Object {$_.StartTime -gt \\(Get-Date\\).AddHours\\(-1\\)} | Sort-Object CPU -Descending | Select-Object -First 1; \"Hala devam ediyor. CPU: $\\([math]::Round\\($j.CPU,0\\)\\)s, RAM: $\\([math]::Round\\($j.WorkingSet/1MB,0\\)\\)MB\" })",
+      "PowerShell(Get-Process java -ErrorAction SilentlyContinue | Select-Object Id, CPU, @{N='RAM_MB';E={[math]::Round\\($_.WorkingSet/1MB,0\\)}}, StartTime)",
+      "Read(//c/Users/BoruGurduu/.gradle/caches/**)",
+      "PowerShell(cmd /c \"dir C:\\\\Users\\\\BoruGurduu\\\\.gradle\\\\caches /od /b 2>&1 | tail -10\")",
+      "PowerShell(cmd /c \"dir C:\\\\Users\\\\BoruGurduu\\\\.gradle\\\\caches /od /b 2>&1\")",
+      "PowerShell(Get-WinEvent -FilterHashtable @{LogName='Application'; Level=2; StartTime=\\(Get-Date\\).AddHours\\(-1\\)} -MaxEvents 5 -ErrorAction SilentlyContinue | Select-Object TimeCreated, Id, Message | Format-List)",
+      "PowerShell(cmd /c \"dir C:\\\\Users\\\\BoruGurduu\\\\.gradle\\\\caches\\\\modules-2\\\\files-2.1\\\\com.android.billingclient /b 2>&1\")",
+      "PowerShell(cmd /c \"dir C:\\\\Users\\\\BoruGurduu\\\\.gradle\\\\caches\\\\modules-2\\\\files-2.1\\\\com.android.billingclient\\\\billing /b 2>&1\")",
+      "PowerShell($apk = \"d:\\\\Git\\\\NobetciProgram\\\\mobile_app\\\\build\\\\app\\\\outputs\\\\flutter-apk\\\\app-release.apk\"; $size = [math]::Round\\(\\(Get-Item $apk\\).Length / 1MB, 1\\); \"Path: $apk`nSize: $size MB\"; Get-Content \"C:\\\\Users\\\\BoruGurduu\\\\.claude\\\\build_apk.log\" | Select-Object -Last 5)",
+      "PowerShell($aab = \"d:\\\\Git\\\\NobetciProgram\\\\mobile_app\\\\build\\\\app\\\\outputs\\\\bundle\\\\release\\\\app-release.aab\"; $size = [math]::Round\\(\\(Get-Item $aab\\).Length / 1MB, 1\\); \"Path: $aab`nSize: $size MB\"; Get-Content \"C:\\\\Users\\\\BoruGurduu\\\\.claude\\\\build_aab.log\" | Select-Object -Last 3)"
     ]
   }
 }

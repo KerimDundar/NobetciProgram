@@ -66,6 +66,7 @@ class RosterState extends ChangeNotifier implements TeacherListStateAdapter {
 
   List<RosterProject> _projects = [];
   String? _activeProjectId;
+  String? _freeProjectId;
   Week _fallbackWeek = _kBlankWeek;
   RosterCellSelection? _selectedCell;
   List<Week>? _generatedMonthlyWeeks;
@@ -96,6 +97,30 @@ class RosterState extends ChangeNotifier implements TeacherListStateAdapter {
   List<Week>? get generatedMonthlyWeeks => _generatedMonthlyWeeks;
   PlanningMode get activePlanningMode =>
       _activeProject?.planningMode ?? PlanningMode.weekly;
+  String? get freeProjectId => _freeProjectId;
+
+  bool canCreateProject(bool isPremium) {
+    if (isPremium) return true;
+    return _projects.isEmpty;
+  }
+
+  bool canAccessProject(String projectId, bool isPremium) {
+    if (isPremium) return true;
+    if (_projects.length <= 1) return true;
+    return projectId == _freeProjectId;
+  }
+
+  bool isActiveProjectAccessible(bool isPremium) {
+    final id = _activeProjectId;
+    if (id == null) return false;
+    return canAccessProject(id, isPremium);
+  }
+
+  void setFreeProjectId(String? id) {
+    _freeProjectId = id;
+    notifyListeners();
+    unawaited(persistState());
+  }
 
   // TeacherListStateAdapter
   @override
@@ -176,6 +201,7 @@ class RosterState extends ChangeNotifier implements TeacherListStateAdapter {
           .toList();
       _projects = projectsList;
       _activeProjectId = data['activeProjectId'] as String?;
+      _freeProjectId = data['freeProjectId'] as String?;
     } catch (_) {
       // corrupt or missing — keep blank state
     } finally {
@@ -188,6 +214,7 @@ class RosterState extends ChangeNotifier implements TeacherListStateAdapter {
       final prefs = await SharedPreferences.getInstance();
       final data = <String, dynamic>{
         'activeProjectId': _activeProjectId,
+        'freeProjectId': _freeProjectId,
         'projects': _projects.map((p) => p.toJson()).toList(),
       };
       await prefs.setString(_storageKey, jsonEncode(data));

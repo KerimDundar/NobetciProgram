@@ -4,9 +4,6 @@
   <foreground>
       <inset
           android:drawable="@drawable/ic_launcher_foreground"
-          android:insetLeft="16%"
-          android:insetTop="22%"
-          android:insetRight="16%"
-          android:insetBottom="10%" />
+          android:inset="16%" />
   </foreground>
 </adaptive-icon>
