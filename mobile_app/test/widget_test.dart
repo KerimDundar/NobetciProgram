@@ -488,7 +488,7 @@ void main() {
       );
     });
 
-    testWidgets('hamburger Kullanım Kılavuzu snackbar gösterir', (tester) async {
+    testWidgets('hamburger Kullanım Kılavuzu UserGuideScreen açar', (tester) async {
       _useTallTestView(tester);
       final state = RosterState.initial();
       await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
@@ -498,10 +498,7 @@ void main() {
       await tester.tap(find.byKey(const Key('menu-item-guide')));
       await tester.pumpAndSettle();
 
-      expect(
-        find.text('Bu sayfa sonraki güncellemede eklenecek.'),
-        findsOneWidget,
-      );
+      expect(find.text('Kullanım Kılavuzu'), findsOneWidget);
     });
 
     testWidgets('edit screen Satır metni yok', (tester) async {

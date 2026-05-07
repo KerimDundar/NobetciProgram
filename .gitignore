@@ -1,0 +1,6 @@
+# Android signing keys - DO NOT COMMIT
+mobile_app/android/key.properties
+mobile_app/android/app/upload-keystore.jks
+**/key.properties
+**/*.jks
+**/*.keystore

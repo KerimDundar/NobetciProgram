@@ -17,6 +17,7 @@ import '../widgets/premium_paywall_dialog.dart';
 import 'edit_week_screen.dart';
 import 'projects_screen.dart';
 import 'teacher_list_screen.dart';
+import 'user_guide_screen.dart';
 
 enum _HomeMenuAction { editWeek, teachers, planningMode, projects, about, guide }
 
@@ -311,11 +312,14 @@ class _RosterHomeScreenState extends State<RosterHomeScreen> {
       case _HomeMenuAction.projects:
         _openProjectsScreen(context);
       case _HomeMenuAction.about:
-      case _HomeMenuAction.guide:
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Bu sayfa sonraki güncellemede eklenecek.'),
           ),
+        );
+      case _HomeMenuAction.guide:
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const UserGuideScreen()),
         );
     }
   }
