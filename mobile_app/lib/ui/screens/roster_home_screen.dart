@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../config/feature_flags.dart';
 import '../../models/planning_mode.dart';
 import '../../models/week.dart';
 import '../../services/export_file_service.dart';
@@ -735,17 +736,23 @@ class _ExportActionsState extends State<_ExportActions> {
 
     try {
       if (type == ExportFileType.pdf) {
-        final premiumState = widget.premiumState;
-        final isPremium = premiumState?.isPremium ?? false;
-        if (isPremium) {
-          await _runExport(type);
-        } else if (premiumState != null &&
-            !widget.state.isActiveProjectAccessible(false)) {
-          await PremiumPaywallDialog.show(context, premiumState);
-        } else {
+        if (!FeatureFlags.premiumGateEnabled) {
           await _interstitialAdService.showBeforePdfExport(
             onContinue: () => _runExport(type),
           );
+        } else {
+          final premiumState = widget.premiumState;
+          final isPremium = premiumState?.isPremium ?? false;
+          if (isPremium) {
+            await _runExport(type);
+          } else if (premiumState != null &&
+              !widget.state.isActiveProjectAccessible(false)) {
+            await PremiumPaywallDialog.show(context, premiumState);
+          } else {
+            await _interstitialAdService.showBeforePdfExport(
+              onContinue: () => _runExport(type),
+            );
+          }
         }
       } else {
         await _runExport(type);

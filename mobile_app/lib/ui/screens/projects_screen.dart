@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../config/feature_flags.dart';
 import '../../models/planning_mode.dart';
 import '../../models/week.dart';
 import '../../services/week_service.dart';
@@ -169,7 +170,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               mode: displayMode,
               isFirst: i == 0,
               projectId: projects[i].id,
-              isLocked: !state.canAccessProject(projects[i].id, _isPremium),
+              isLocked: FeatureFlags.premiumGateEnabled &&
+                  !state.canAccessProject(projects[i].id, _isPremium),
             ),
           ),
       ],
@@ -239,7 +241,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     String? projectId,
     bool isLocked,
   ) {
-    if (isLocked) {
+    if (isLocked && FeatureFlags.premiumGateEnabled) {
       final premiumState = widget.premiumState;
       if (premiumState != null) {
         PremiumPaywallDialog.show(context, premiumState);
@@ -267,7 +269,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   }
 
   Future<void> _onNewProjectTap(BuildContext context) async {
-    if (!widget.rosterState.canCreateProject(_isPremium)) {
+    if (FeatureFlags.premiumGateEnabled &&
+        !widget.rosterState.canCreateProject(_isPremium)) {
       final premiumState = widget.premiumState;
       if (premiumState != null) {
         await PremiumPaywallDialog.show(context, premiumState);
