@@ -23,7 +23,7 @@ class TeacherListScreen extends StatelessWidget {
       animation: state,
       builder: (context, _) {
         return Scaffold(
-          appBar: AppBar(title: const Text('Ogretmenler')),
+          appBar: AppBar(title: const Text('Öğretmenler')),
           body: _buildBody(context),
           floatingActionButton: FloatingActionButton(
             key: const ValueKey('teacher-list-add-button'),
@@ -59,7 +59,7 @@ class TeacherListScreen extends StatelessWidget {
     if (state.teachers.isEmpty) {
       return const Center(
         child: Text(
-          'Henuz ogretmen kaydi yok.',
+          'Henüz öğretmen kaydı yok.',
           key: ValueKey('teacher-list-empty'),
           textAlign: TextAlign.center,
         ),
@@ -68,7 +68,7 @@ class TeacherListScreen extends StatelessWidget {
 
     return TeacherSelectionPanel(
       embedded: true,
-      title: 'Ogretmen Listesi',
+      title: 'Öğretmen Listesi',
       teachers: state.teachers,
       week: currentWeek,
       onTeacherTap: (teacher) => _openEditTeacherForm(context, teacher),
@@ -90,7 +90,7 @@ class TeacherListScreen extends StatelessWidget {
     }
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Ogretmen eklendi.')));
+    ).showSnackBar(const SnackBar(content: Text('Öğretmen eklendi.')));
   }
 
   Future<void> _openEditTeacherForm(
@@ -110,7 +110,7 @@ class TeacherListScreen extends StatelessWidget {
       return;
     }
     final message = switch (result) {
-      _TeacherEditAction.updated => 'Ogretmen guncellendi.',
+      _TeacherEditAction.updated => 'Öğretmen güncellendi.',
       _TeacherEditAction.deleted => _deleteMessage(teacher),
     };
     ScaffoldMessenger.of(
@@ -121,9 +121,9 @@ class TeacherListScreen extends StatelessWidget {
   String _deleteMessage(Teacher teacher) {
     final clearedCount = onTeacherDeletedFromRoster?.call(teacher) ?? 0;
     if (clearedCount <= 0) {
-      return 'Ogretmen silindi.';
+      return 'Öğretmen silindi.';
     }
-    return 'Ogretmen silindi. $clearedCount hucre temizlendi.';
+    return 'Öğretmen silindi. $clearedCount hücre temizlendi.';
   }
 }
 
@@ -172,7 +172,7 @@ class _TeacherCreateFormState extends State<_TeacherCreateForm> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Ogretmen Ekle',
+                'Öğretmen Ekle',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 12),
@@ -323,7 +323,7 @@ class _TeacherEditFormState extends State<_TeacherEditForm> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Ogretmen Duzenle',
+                'Öğretmen Düzenle',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 12),
@@ -415,13 +415,13 @@ class _TeacherEditFormState extends State<_TeacherEditForm> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Ogretmeni Sil'),
-          content: const Text('Bu ogretmen kaydi silinsin mi?'),
+          title: const Text('Öğretmeni Sil'),
+          content: const Text('Bu öğretmen kaydı silinsin mi?'),
           actions: [
             TextButton(
               key: const ValueKey('teacher-delete-cancel'),
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Vazgec'),
+              child: const Text('Vazgeç'),
             ),
             FilledButton(
               key: const ValueKey('teacher-delete-confirm'),

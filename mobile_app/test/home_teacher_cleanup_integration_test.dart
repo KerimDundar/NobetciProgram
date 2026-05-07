@@ -52,7 +52,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(rosterState.currentWeek.rows[0].teachersByDay[0], '');
-    expect(find.text('Ogretmen silindi. 1 hucre temizlendi.'), findsOneWidget);
+    expect(find.text('Öğretmen silindi. 1 hücre temizlendi.'), findsOneWidget);
 
     teacherState.dispose();
     rosterState.dispose();

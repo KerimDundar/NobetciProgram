@@ -43,7 +43,15 @@
       "PowerShell(cmd /c \"dir C:\\\\Users\\\\BoruGurduu\\\\.gradle\\\\caches\\\\modules-2\\\\files-2.1\\\\com.android.billingclient /b 2>&1\")",
       "PowerShell(cmd /c \"dir C:\\\\Users\\\\BoruGurduu\\\\.gradle\\\\caches\\\\modules-2\\\\files-2.1\\\\com.android.billingclient\\\\billing /b 2>&1\")",
       "PowerShell($apk = \"d:\\\\Git\\\\NobetciProgram\\\\mobile_app\\\\build\\\\app\\\\outputs\\\\flutter-apk\\\\app-release.apk\"; $size = [math]::Round\\(\\(Get-Item $apk\\).Length / 1MB, 1\\); \"Path: $apk`nSize: $size MB\"; Get-Content \"C:\\\\Users\\\\BoruGurduu\\\\.claude\\\\build_apk.log\" | Select-Object -Last 5)",
-      "PowerShell($aab = \"d:\\\\Git\\\\NobetciProgram\\\\mobile_app\\\\build\\\\app\\\\outputs\\\\bundle\\\\release\\\\app-release.aab\"; $size = [math]::Round\\(\\(Get-Item $aab\\).Length / 1MB, 1\\); \"Path: $aab`nSize: $size MB\"; Get-Content \"C:\\\\Users\\\\BoruGurduu\\\\.claude\\\\build_aab.log\" | Select-Object -Last 3)"
+      "PowerShell($aab = \"d:\\\\Git\\\\NobetciProgram\\\\mobile_app\\\\build\\\\app\\\\outputs\\\\bundle\\\\release\\\\app-release.aab\"; $size = [math]::Round\\(\\(Get-Item $aab\\).Length / 1MB, 1\\); \"Path: $aab`nSize: $size MB\"; Get-Content \"C:\\\\Users\\\\BoruGurduu\\\\.claude\\\\build_aab.log\" | Select-Object -Last 3)",
+      "Read(//c/Users/BoruGurduu/.puro/bin//**)",
+      "Bash(/c/Users/BoruGurduu/.puro/envs/stable/flutter/bin/flutter.bat test *)",
+      "Bash(/c/Users/BoruGurduu/.puro/envs/stable/flutter/bin/flutter.bat analyze *)",
+      "Bash(/c/Users/BoruGurduu/.puro/envs/stable/flutter/bin/flutter.bat build *)",
+      "Bash(/c/Users/BoruGurduu/.puro/envs/stable/flutter/bin/flutter.bat emulators *)",
+      "Bash(/c/Users/BoruGurduu/.puro/envs/stable/flutter/bin/flutter.bat devices *)",
+      "Bash(adb -s emulator-5554 install -r \"d:/Git/NobetciProgram/mobile_app/build/app/outputs/flutter-apk/app-release.apk\")",
+      "Bash(adb -s emulator-5554 shell monkey -p com.nobetcizelgesi.app -c android.intent.category.LAUNCHER 1)"
     ]
   }
 }

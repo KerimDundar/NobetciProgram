@@ -225,6 +225,17 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                   ],
                 ),
               ),
+              if (projectId != null)
+                IconButton(
+                  key: isFirst
+                      ? const Key('projects-delete-button')
+                      : ValueKey('projects-delete-$projectId'),
+                  tooltip: 'Projeyi sil',
+                  iconSize: 20,
+                  onPressed: () =>
+                      _onDeleteProjectTap(context, projectId, name),
+                  icon: const Icon(Icons.delete_outline),
+                ),
               if (isLocked)
                 const Icon(Icons.lock_outline, size: 20)
               else
@@ -280,6 +291,44 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     if (mounted) {
       await _openNewProjectDialog(context);
     }
+  }
+
+  Future<void> _onDeleteProjectTap(
+    BuildContext context,
+    String projectId,
+    String name,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Projeyi sil'),
+        content: Text(
+          '"$name" projesini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.',
+        ),
+        actions: [
+          TextButton(
+            key: const Key('project-delete-cancel'),
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('İptal'),
+          ),
+          FilledButton(
+            key: const Key('project-delete-confirm'),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+              foregroundColor: Theme.of(ctx).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    widget.rosterState.deleteProject(projectId);
+    messenger.showSnackBar(const SnackBar(content: Text('Proje silindi.')));
   }
 
   Future<void> _openNewProjectDialog(BuildContext context) async {

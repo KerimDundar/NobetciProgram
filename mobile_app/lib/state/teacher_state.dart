@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/teacher.dart';
 import '../services/teacher_repository.dart';
+import '../services/turkish_text_comparator.dart';
 import 'teacher_list_state.dart';
 
 class TeacherState extends ChangeNotifier implements TeacherListStateAdapter {
@@ -65,7 +66,7 @@ class TeacherState extends ChangeNotifier implements TeacherListStateAdapter {
               return name.contains(cleanQuery) || id.contains(cleanQuery);
             })
             .toList(growable: false)
-          ..sort((left, right) => left.name.compareTo(right.name));
+          ..sort((left, right) => TurkishTextComparator.compare(left.name, right.name));
 
     return List<Teacher>.unmodifiable(filtered);
   }

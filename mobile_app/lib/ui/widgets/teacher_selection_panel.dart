@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/teacher.dart';
 import '../../models/week.dart';
 import '../../services/teacher_assignment_lookup_service.dart';
+import '../../services/turkish_text_comparator.dart';
 
 Future<Teacher?> showTeacherSelectionPanel(
   BuildContext context, {
@@ -92,7 +93,7 @@ class _TeacherSelectionPanelState extends State<TeacherSelectionPanel> {
             controller: _searchController,
             decoration: const InputDecoration(
               prefixIcon: Icon(Icons.search),
-              labelText: 'Ogretmen ara',
+              labelText: 'Öğretmen ara',
             ),
           ),
         ),
@@ -120,7 +121,7 @@ class _TeacherSelectionPanelState extends State<TeacherSelectionPanel> {
                     if (widget.week != null)
                       IconButton(
                         key: ValueKey('teacher-picker-info-${teacher.id}'),
-                        tooltip: 'Gorev bilgisi',
+                        tooltip: 'Görev bilgisi',
                         icon: const Icon(Icons.info_outline),
                         onPressed: () => _showTeacherAssignments(teacher),
                       ),
@@ -210,7 +211,7 @@ class _TeacherSelectionPanelState extends State<TeacherSelectionPanel> {
                       itemBuilder: (context, index) {
                         final assignment = assignments[index];
                         final location = assignment.location.isEmpty
-                            ? 'Satir ${assignment.rowIndex + 1}'
+                            ? 'Satır ${assignment.rowIndex + 1}'
                             : assignment.location;
                         return ListTile(
                           key: ValueKey(
@@ -241,7 +242,7 @@ class _TeacherSelectionPanelState extends State<TeacherSelectionPanel> {
           return teacher.name.toLowerCase().contains(query);
         })
         .toList(growable: false)
-      ..sort((left, right) => left.name.compareTo(right.name));
+      ..sort((left, right) => TurkishTextComparator.compare(left.name, right.name));
   }
 
   String _initials(String name) {
@@ -253,7 +254,7 @@ class _TeacherSelectionPanelState extends State<TeacherSelectionPanel> {
     if (parts.isEmpty) {
       return '?';
     }
-    return parts.map((part) => part[0].toUpperCase()).join();
+    return parts.map((part) => TurkishTextComparator.initial(part)).join();
   }
 
   void _onSearchChanged() {

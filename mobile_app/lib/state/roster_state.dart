@@ -268,6 +268,20 @@ class RosterState extends ChangeNotifier implements TeacherListStateAdapter {
     }
   }
 
+  void deleteProject(String projectId) {
+    final remaining = _projects.where((p) => p.id != projectId).toList();
+    _projects = remaining;
+    if (_activeProjectId == projectId) {
+      _activeProjectId = remaining.isNotEmpty ? remaining.first.id : null;
+      _generatedMonthlyWeeks = null;
+    }
+    if (_freeProjectId == projectId) {
+      _freeProjectId = null;
+    }
+    notifyListeners();
+    unawaited(persistState());
+  }
+
   // ── Single-project compat API ───────────────────────────────────────────────
 
   void setProjectMetadata({required String name}) {

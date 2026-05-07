@@ -984,8 +984,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
       expect(find.text('Önceki Hafta'), findsNothing);
       expect(find.text('Sonraki Hafta'), findsNothing);
-      expect(find.text('Export PDF'), findsNothing);
-      expect(find.text('Export Excel'), findsNothing);
+      expect(find.text('PDF Dışa Aktar'), findsNothing);
+      expect(find.text('Excel Dışa Aktar'), findsNothing);
       expect(find.text('Henüz çizelge oluşturulmadı.'), findsOneWidget);
       expect(
         find.byKey(const Key('roster-home-go-to-projects')),
@@ -1000,8 +1000,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(home: RosterHomeScreen(state: state)));
       expect(find.text('Önceki Hafta'), findsOneWidget);
       expect(find.text('Sonraki Hafta'), findsOneWidget);
-      expect(find.text('Export PDF'), findsOneWidget);
-      expect(find.text('Export Excel'), findsOneWidget);
+      expect(find.text('PDF Dışa Aktar'), findsOneWidget);
+      expect(find.text('Excel Dışa Aktar'), findsOneWidget);
     });
 
     testWidgets(

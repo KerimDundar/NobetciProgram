@@ -1,4 +1,5 @@
 import '../models/teacher.dart';
+import 'turkish_text_comparator.dart';
 
 class TeacherService {
   TeacherService({List<Teacher>? teachers})
@@ -29,7 +30,7 @@ class TeacherService {
               return name.contains(cleanQuery) || id.contains(cleanQuery);
             })
             .toList(growable: false)
-          ..sort((left, right) => left.name.compareTo(right.name));
+          ..sort((left, right) => TurkishTextComparator.compare(left.name, right.name));
 
     return List<Teacher>.unmodifiable(filtered);
   }

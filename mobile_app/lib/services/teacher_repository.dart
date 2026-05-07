@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../models/teacher.dart';
+import 'turkish_text_comparator.dart';
 
 abstract class TeacherRepository {
   Future<List<Teacher>> list();
@@ -105,7 +106,7 @@ class InMemoryTeacherRepository implements TeacherRepository {
 
   List<Teacher> _snapshot() {
     final values = _items.values.toList(growable: false)
-      ..sort((left, right) => left.name.compareTo(right.name));
+      ..sort((left, right) => TurkishTextComparator.compare(left.name, right.name));
     return List<Teacher>.unmodifiable(values);
   }
 

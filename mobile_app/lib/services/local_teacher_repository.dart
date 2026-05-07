@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/teacher.dart';
 import 'teacher_repository.dart';
+import 'turkish_text_comparator.dart';
 
 class LocalTeacherRepository implements TeacherRepository {
   LocalTeacherRepository({
@@ -211,7 +212,7 @@ class LocalTeacherRepository implements TeacherRepository {
 
   List<Teacher> _snapshot() {
     final values = _items.values.toList(growable: false)
-      ..sort((left, right) => left.name.compareTo(right.name));
+      ..sort((left, right) => TurkishTextComparator.compare(left.name, right.name));
     return List<Teacher>.unmodifiable(values);
   }
 

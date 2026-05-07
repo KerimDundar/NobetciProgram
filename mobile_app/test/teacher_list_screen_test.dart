@@ -47,7 +47,7 @@ void main() {
       ]);
       await tester.pump();
 
-      expect(find.text('Ogretmen Listesi'), findsOneWidget);
+      expect(find.text('Öğretmen Listesi'), findsOneWidget);
       expect(find.text('Ali Yilmaz'), findsOneWidget);
       expect(find.text('Ayse Demir'), findsOneWidget);
 
@@ -79,9 +79,9 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('teacher-create-save')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Ogretmen Listesi'), findsOneWidget);
+      expect(find.text('Öğretmen Listesi'), findsOneWidget);
       expect(find.text('Yeni Ogretmen'), findsOneWidget);
-      expect(find.text('Ogretmen eklendi.'), findsOneWidget);
+      expect(find.text('Öğretmen eklendi.'), findsOneWidget);
 
       state.dispose();
       repository.dispose();
@@ -114,7 +114,7 @@ void main() {
       await tester.tap(saveButton);
       await tester.pumpAndSettle();
 
-      expect(find.text('Ogretmen guncellendi.'), findsOneWidget);
+      expect(find.text('Öğretmen güncellendi.'), findsOneWidget);
       expect(find.text('Ali Yilmaz Guncel'), findsOneWidget);
 
       state.dispose();
@@ -153,12 +153,12 @@ void main() {
       await tester.tap(deleteButton);
       await tester.pumpAndSettle();
 
-      expect(find.text('Bu ogretmen kaydi silinsin mi?'), findsOneWidget);
+      expect(find.text('Bu öğretmen kaydı silinsin mi?'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('teacher-delete-confirm')));
       await tester.pumpAndSettle();
 
       expect(
-        find.text('Ogretmen silindi. 2 hucre temizlendi.'),
+        find.text('Öğretmen silindi. 2 hücre temizlendi.'),
         findsOneWidget,
       );
       expect(find.byKey(const ValueKey('teacher-list-empty')), findsOneWidget);

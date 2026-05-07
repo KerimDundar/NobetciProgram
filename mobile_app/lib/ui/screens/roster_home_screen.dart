@@ -704,7 +704,7 @@ class _ExportActionsState extends State<_ExportActions> {
                         ? null
                         : () => _export(ExportFileType.pdf),
                     icon: const Icon(Icons.picture_as_pdf),
-                    label: const Text('Export PDF'),
+                    label: const Text('PDF Dışa Aktar'),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -714,7 +714,7 @@ class _ExportActionsState extends State<_ExportActions> {
                         ? null
                         : () => _export(ExportFileType.excel),
                     icon: const Icon(Icons.table_chart),
-                    label: const Text('Export Excel'),
+                    label: const Text('Excel Dışa Aktar'),
                   ),
                 ),
               ],
