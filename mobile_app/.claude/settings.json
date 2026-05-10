@@ -54,7 +54,11 @@
       "Bash(adb -s emulator-5554 shell monkey -p com.nobetcizelgesi.app -c android.intent.category.LAUNCHER 1)",
       "Bash(git -C \"d:/Git/NobetciProgram/mobile_app\" check-ignore -v \"android/key.properties\" \"android/app/upload-keystore.jks\")",
       "Bash(git -C \"d:/Git/NobetciProgram/mobile_app\" status android/key.properties android/app/upload-keystore.jks)",
-      "Read(//d/Git/NobetciProgram/**)"
+      "Read(//d/Git/NobetciProgram/**)",
+      "PowerShell(cd D:\\\\Git\\\\NobetciProgram\\\\mobile_app; $sp = \\(Get-Content android\\\\key.properties | Where-Object { $_ -match '^storePassword=' }\\) -replace '^storePassword=',''; keytool -list -v -keystore android\\\\app\\\\upload-keystore.jks -alias upload -storepass $sp 2>&1 | Select-String 'SHA256')",
+      "PowerShell(cd D:\\\\Git\\\\NobetciProgram\\\\mobile_app; $sp = \\(Get-Content android\\\\key.properties | Where-Object { $_ -match '^storePassword=' }\\) -replace '^storePassword=',''; apksigner verify --print-certs build\\\\app\\\\outputs\\\\flutter-apk\\\\app-release.apk 2>&1 | Select-String 'SHA-256')",
+      "PowerShell(cd D:\\\\Git\\\\NobetciProgram\\\\mobile_app; $content = Get-Content android/app/src/main/assets/adi-registration.properties -Raw; \"[$content]\"; $content.Length)",
+      "PowerShell($s = 'bahçe–1'; $s.ToCharArray\\(\\) | ForEach-Object { [int]$_ | ForEach-Object { '{0:X4}' -f $_ } })"
     ],
     "additionalDirectories": [
       "D:\\Git\\NobetciProgram"

@@ -1,7 +1,6 @@
 import '../models/roster_row.dart';
 import '../models/week.dart';
 import 'cell_teacher_codec.dart';
-import 'duplicate_location_service.dart';
 import 'text_normalizer.dart';
 
 class ExportCellSpan {
@@ -25,15 +24,11 @@ class ExportWeekTable {
 
 class ExportTableService {
   const ExportTableService({
-    DuplicateLocationService duplicateLocationService =
-        const DuplicateLocationService(),
     TextNormalizer normalizer = const TextNormalizer(),
     CellTeacherCodec cellTeacherCodec = const CellTeacherCodec(),
-  }) : _duplicateLocationService = duplicateLocationService,
-       _normalizer = normalizer,
+  }) : _normalizer = normalizer,
        _cellTeacherCodec = cellTeacherCodec;
 
-  final DuplicateLocationService _duplicateLocationService;
   final TextNormalizer _normalizer;
   final CellTeacherCodec _cellTeacherCodec;
   static const String _multiTeacherLineBreakToken = r'\n';
@@ -64,65 +59,27 @@ class ExportTableService {
     );
   }
 
-  /// Maps desktop duplicate-location export merge pair scanning.
   void _applyDuplicateLocationPairs(
     List<List<String>> rows,
     List<ExportCellSpan> spans,
   ) {
-    var topRow = 0;
-    while (topRow < rows.length - 1) {
-      final bottomRow = topRow + 1;
-      if (_duplicateLocationService.isDuplicateLocation(
-        rows[topRow][0],
-        rows[bottomRow][0],
-      )) {
-        _mergeDuplicatePair(rows, spans, topRow, bottomRow);
-        topRow += 2;
-      } else {
-        topRow += 1;
+    for (var column = 1; column <= rosterDayCount; column++) {
+      var topRow = 0;
+      while (topRow < rows.length - 1) {
+        final bottomRow = topRow + 1;
+        final topCell = _normalizeTeacherCell(rows[topRow][column]);
+        final bottomCell = _normalizeTeacherCell(rows[bottomRow][column]);
+        rows[topRow][column] = topCell;
+        rows[bottomRow][column] = bottomCell;
+        if (topCell.isNotEmpty && _teacherCellsEqual(topCell, bottomCell)) {
+          rows[bottomRow][column] = '';
+          spans.add(ExportCellSpan(column: column, startRow: topRow, endRow: bottomRow));
+          topRow += 2;
+        } else {
+          topRow += 1;
+        }
       }
     }
-  }
-
-  void _mergeDuplicatePair(
-    List<List<String>> rows,
-    List<ExportCellSpan> spans,
-    int topRow,
-    int bottomRow,
-  ) {
-    final topLocation = _normalizer.displayClean(rows[topRow][0]);
-    final bottomLocation = _normalizer.displayClean(rows[bottomRow][0]);
-    rows[topRow][0] = topLocation.isNotEmpty ? topLocation : bottomLocation;
-    rows[bottomRow][0] = '';
-    spans.add(ExportCellSpan(column: 0, startRow: topRow, endRow: bottomRow));
-
-    for (var column = 1; column <= rosterDayCount; column++) {
-      _mergeTeacherColumnInPair(rows, spans, topRow, bottomRow, column);
-    }
-  }
-
-  void _mergeTeacherColumnInPair(
-    List<List<String>> rows,
-    List<ExportCellSpan> spans,
-    int topRow,
-    int bottomRow,
-    int column,
-  ) {
-    final topCell = _normalizeTeacherCell(rows[topRow][column]);
-    final bottomCell = _normalizeTeacherCell(rows[bottomRow][column]);
-    rows[topRow][column] = topCell;
-    rows[bottomRow][column] = bottomCell;
-    if (topCell.isNotEmpty &&
-        bottomCell.isNotEmpty &&
-        !_teacherCellsEqual(topCell, bottomCell)) {
-      return;
-    }
-
-    rows[topRow][column] = topCell.isNotEmpty ? topCell : bottomCell;
-    rows[bottomRow][column] = '';
-    spans.add(
-      ExportCellSpan(column: column, startRow: topRow, endRow: bottomRow),
-    );
   }
 
   String _normalizeTeacherCell(String value) {

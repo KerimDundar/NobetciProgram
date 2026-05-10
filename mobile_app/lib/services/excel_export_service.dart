@@ -111,6 +111,7 @@ class ExcelExportService {
     final table = _tableService.buildWeekTable(week);
     for (var bodyRow = 0; bodyRow < table.bodyRows.length; bodyRow++) {
       final values = table.bodyRows[bodyRow];
+      var maxLines = 1;
       for (var column = 0; column < values.length; column++) {
         _writeCell(
           sheet,
@@ -120,6 +121,13 @@ class ExcelExportService {
           _bodyStyle,
           preserveLineBreaks: column > 0,
         );
+        if (column > 0) {
+          final lines = values[column].isEmpty ? 1 : values[column].split('\n').length;
+          if (lines > maxLines) maxLines = lines;
+        }
+      }
+      if (maxLines > 1) {
+        sheet.setRowHeight(bodyStartRow + bodyRow, maxLines * 22.0);
       }
     }
 

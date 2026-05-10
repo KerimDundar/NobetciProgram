@@ -221,6 +221,25 @@ class PdfExportService {
     required pw.TextStyle style,
   }) {
     final cellsByColumn = _buildBodyCellsByColumn(table);
+
+    final perRowHeights = <double>[];
+    for (var row = 0; row < table.bodyRows.length; row++) {
+      var maxLines = 1;
+      for (final cell in table.bodyRows[row]) {
+        final lines = _countLines(cell);
+        if (lines > maxLines) maxLines = lines;
+      }
+      perRowHeights.add(rowHeight * maxLines);
+    }
+
+    double cellHeight(_PdfBodyCell cell) {
+      var h = 0.0;
+      for (var r = cell.row; r < cell.row + cell.rowSpan && r < perRowHeights.length; r++) {
+        h += perRowHeights[r];
+      }
+      return h;
+    }
+
     return pw.Row(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
@@ -231,13 +250,18 @@ class PdfExportService {
                 _cell(
                   cell.value,
                   width: columnWidth,
-                  height: rowHeight * cell.rowSpan,
+                  height: cellHeight(cell),
                   style: style,
                 ),
             ],
           ),
       ],
     );
+  }
+
+  int _countLines(String value) {
+    if (value.isEmpty) return 1;
+    return value.split('\n').length;
   }
 
   List<List<_PdfBodyCell>> _buildBodyCellsByColumn(ExportWeekTable table) {

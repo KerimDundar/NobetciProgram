@@ -48,7 +48,7 @@ class _NobetciProgramAppState extends State<NobetciProgramApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Nobetci Program',
+      title: 'Okul Nöbet Çizelgem',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.build(),
       locale: const Locale('tr', 'TR'),

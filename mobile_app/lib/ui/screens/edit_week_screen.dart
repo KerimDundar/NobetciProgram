@@ -7,6 +7,7 @@ import '../../services/week_service.dart';
 import '../../state/app_settings_state.dart';
 import '../../state/roster_state.dart';
 import '../../state/teacher_list_state.dart';
+import '../widgets/month_picker_dialog.dart';
 import '../widgets/teacher_selection_panel.dart';
 
 const String _draftMultiTeacherLineBreakToken = r'\n';
@@ -132,8 +133,9 @@ class _EditWeekScreenState extends State<EditWeekScreen> {
               _DateSection(
                 startDate: _startDate,
                 endDate: _endDate,
-                onPickStart: () => _pickDate(isStart: true),
-                onPickEnd: () => _pickDate(isStart: false),
+                isMonthly:
+                    widget.state.activePlanningMode == PlanningMode.monthly,
+                onPick: _pickDate,
               ),
               const SizedBox(height: 12),
               Card(
@@ -189,77 +191,56 @@ class _EditWeekScreenState extends State<EditWeekScreen> {
     );
   }
 
-  Future<void> _pickDate({required bool isStart}) async {
-    final initialDate = isStart ? _startDate : _endDate;
+  Future<void> _pickDate() async {
+    final isMonthly =
+        widget.state.activePlanningMode == PlanningMode.monthly;
     final override = widget.testDatePickerOverride;
 
-    DateTime? picked;
-    if (override != null) {
-      picked = await override(context, initialDate);
-    } else {
-      picked = await showDatePicker(
-        context: context,
-        initialDate: initialDate,
-        firstDate: DateTime(2000),
-        lastDate: DateTime(2100),
-      );
-    }
-    if (picked == null || !mounted) {
-      return;
-    }
-
-    final candidateDate = DateTime(picked.year, picked.month, picked.day);
-    final settings = widget.appSettingsState;
-    final isMonthly = settings?.mode == PlanningMode.monthly;
-
-    if (isStart && isMonthly) {
+    if (isMonthly) {
+      DateTime? picked;
+      if (override != null) {
+        picked = await override(context, _startDate);
+      } else {
+        picked = await showMonthPicker(context, _startDate);
+      }
+      if (picked == null || !mounted) return;
       final svc = WeekService();
       setState(() {
-        _startDate = svc.monthStart(candidateDate);
-        _endDate = svc.monthEnd(candidateDate);
+        _startDate = svc.monthStart(picked!);
+        _endDate = svc.monthEnd(picked);
         _syncDraftFlags(clearStatus: true);
       });
       return;
     }
 
-    final candidateStart = isStart ? candidateDate : _startDate;
-    final candidateEnd = isStart ? _endDate : candidateDate;
-
-    if (settings != null) {
-      final error = WeekService().validateDateRange(
-        candidateStart,
-        candidateEnd,
-        settings.mode,
+    DateTime? picked;
+    if (override != null) {
+      picked = await override(context, _startDate);
+    } else {
+      picked = await showDatePicker(
+        context: context,
+        initialDate: _startDate,
+        firstDate: DateTime(2000),
+        lastDate: DateTime(2100),
       );
-      if (error != null) {
-        final svc = WeekService();
-        final exStart = svc.monthStart(candidateStart);
-        final exEnd = svc.monthEnd(candidateStart);
-        String fmtDate(DateTime d) =>
-            '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
-        final message = switch (error) {
-          WeekValidationError.tooLong =>
-            'Haftalık modda en fazla 1 hafta seçilebilir.',
-          WeekValidationError.notFullMonth =>
-            'Aylık planda yalnızca bir tam ay seçilebilir. Örn: ${fmtDate(exStart)} - ${fmtDate(exEnd)}',
-          WeekValidationError.invalidRange =>
-            'Başlangıç tarihi bitiş tarihinden sonra olamaz.',
-        };
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(message)));
-        }
-        return;
+    }
+    if (picked == null || !mounted) return;
+
+    final candidateDate = DateTime(picked.year, picked.month, picked.day);
+    if (candidateDate.weekday != DateTime.monday) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Haftalık plan Pazartesi gününden başlamalıdır.'),
+          ),
+        );
       }
+      return;
     }
 
     setState(() {
-      if (isStart) {
-        _startDate = candidateDate;
-      } else {
-        _endDate = candidateDate;
-      }
+      _startDate = candidateDate;
+      _endDate = candidateDate.add(const Duration(days: 4));
       _syncDraftFlags(clearStatus: true);
     });
   }
@@ -429,7 +410,7 @@ class _EditWeekScreenState extends State<EditWeekScreen> {
       schoolName: _schoolController.text,
       principalName: _principalController.text,
       rows: _currentRows(),
-      mode: widget.appSettingsState?.mode ?? PlanningMode.weekly,
+      mode: widget.state.activePlanningMode,
     );
 
     if (!mounted) {
@@ -669,17 +650,31 @@ class _DateSection extends StatelessWidget {
   const _DateSection({
     required this.startDate,
     required this.endDate,
-    required this.onPickStart,
-    required this.onPickEnd,
+    required this.isMonthly,
+    required this.onPick,
   });
 
   final DateTime startDate;
   final DateTime endDate;
-  final VoidCallback onPickStart;
-  final VoidCallback onPickEnd;
+  final bool isMonthly;
+  final VoidCallback onPick;
+
+  String _monthLabel(DateTime d) {
+    const months = [
+      'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+      'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
+    ];
+    return '${months[d.month - 1]} ${d.year}';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final buttonLabel = isMonthly
+        ? 'Ay Seç: ${_monthLabel(startDate)}'
+        : 'Hafta Başlangıcı: ${_formatDate(startDate)}';
+    final buttonIcon =
+        isMonthly ? Icons.calendar_month : Icons.event;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -695,16 +690,22 @@ class _DateSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 OutlinedButton.icon(
-                  onPressed: onPickStart,
-                  icon: const Icon(Icons.event),
-                  label: Text('Başlangıç ${_formatDate(startDate)}'),
+                  onPressed: onPick,
+                  icon: Icon(buttonIcon),
+                  label: Text(buttonLabel),
                 ),
                 const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: onPickEnd,
-                  icon: const Icon(Icons.event_available),
-                  label: Text('Bitiş ${_formatDate(endDate)}'),
-                ),
+                if (isMonthly)
+                  Text(
+                    'Tarih aralığı: ${_formatDate(startDate)} – ${_formatDate(endDate)}',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  )
+                else
+                  OutlinedButton.icon(
+                    onPressed: null,
+                    icon: const Icon(Icons.event_available),
+                    label: Text('Bitiş: ${_formatDate(endDate)}'),
+                  ),
               ],
             ),
           ],

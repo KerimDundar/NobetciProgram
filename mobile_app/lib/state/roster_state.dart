@@ -254,6 +254,7 @@ class RosterState extends ChangeNotifier implements TeacherListStateAdapter {
     );
     _projects = [..._projects, project];
     _activeProjectId = id;
+    _generatedMonthlyWeeks = null;
     notifyListeners();
     unawaited(persistState());
     return id;
@@ -321,6 +322,34 @@ class RosterState extends ChangeNotifier implements TeacherListStateAdapter {
       ));
     } else {
       _fallbackWeek = _weekService.previousWeek(_fallbackWeek);
+    }
+    notifyListeners();
+    unawaited(persistState());
+  }
+
+  void goToNextMonth() {
+    final p = _activeProject;
+    if (p != null) {
+      _updateActiveProject(p.copyWith(
+        currentWeek: _weekService.nextMonth(p.currentWeek),
+        updatedAt: DateTime.now(),
+      ));
+    } else {
+      _fallbackWeek = _weekService.nextMonth(_fallbackWeek);
+    }
+    notifyListeners();
+    unawaited(persistState());
+  }
+
+  void goToPreviousMonth() {
+    final p = _activeProject;
+    if (p != null) {
+      _updateActiveProject(p.copyWith(
+        currentWeek: _weekService.previousMonth(p.currentWeek),
+        updatedAt: DateTime.now(),
+      ));
+    } else {
+      _fallbackWeek = _weekService.previousMonth(_fallbackWeek);
     }
     notifyListeners();
     unawaited(persistState());

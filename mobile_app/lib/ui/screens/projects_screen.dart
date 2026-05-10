@@ -11,6 +11,7 @@ import '../theme/app_theme.dart';
 import '../widgets/premium_paywall_dialog.dart';
 import 'edit_week_screen.dart';
 import 'roster_home_screen.dart';
+import 'teacher_list_screen.dart';
 
 const List<String> _kMonths = [
   'Ocak',
@@ -127,13 +128,6 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   }
 
   Widget _buildProjectList(BuildContext context) {
-    final appSettings = widget.appSettingsState;
-    if (appSettings != null) {
-      return AnimatedBuilder(
-        animation: appSettings,
-        builder: (context, _) => _buildCardList(context, appSettings.mode),
-      );
-    }
     return _buildCardList(context, widget.rosterState.activePlanningMode);
   }
 
@@ -167,7 +161,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                   ? projects[i].name
                   : 'Nöbet Çizelgesi',
               week: projects[i].currentWeek,
-              mode: displayMode,
+              mode: projects[i].planningMode,
               isFirst: i == 0,
               projectId: projects[i].id,
               isLocked: FeatureFlags.premiumGateEnabled &&
@@ -357,6 +351,18 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     if (widget.appSettingsState != null) {
       await widget.appSettingsState!.setMode(result.planningMode);
     }
+    if (!mounted) return;
+
+    await navigator.push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => TeacherListScreen(
+          state: widget.rosterState,
+          currentWeek: widget.rosterState.currentWeek,
+          onTeacherDeletedFromRoster:
+              (teacher) => widget.rosterState.clearAssignmentsForTeacher(teacher.name),
+        ),
+      ),
+    );
     if (!mounted) return;
 
     final saved = await navigator.push<bool>(

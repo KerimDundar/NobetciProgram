@@ -94,9 +94,13 @@ class WeekService {
   }
 
   List<Week> generateMonthlyFromWeek(Week current) {
+    final refMonth = current.startDate.month;
+    final refYear = current.startDate.year;
     final weeks = <Week>[current];
-    for (var i = 0; i < 3; i++) {
-      weeks.add(buildNextWeek(weeks.last));
+    var next = buildNextWeek(weeks.last);
+    while (next.startDate.month == refMonth && next.startDate.year == refYear) {
+      weeks.add(next);
+      next = buildNextWeek(weeks.last);
     }
     return List.unmodifiable(weeks);
   }
@@ -137,6 +141,34 @@ class WeekService {
       rows: _rosterService.rotateBackward(current.rows),
       schoolName: current.schoolName,
       principalName: current.principalName,
+    );
+  }
+
+  Week nextMonth(Week current) {
+    final nextStart = monthStart(
+      DateTime(current.startDate.year, current.startDate.month + 1),
+    );
+    return buildWeek(
+      startDate: nextStart,
+      endDate: monthEnd(nextStart),
+      rows: current.rows,
+      schoolName: current.schoolName,
+      principalName: current.principalName,
+      mode: PlanningMode.monthly,
+    );
+  }
+
+  Week previousMonth(Week current) {
+    final prevStart = monthStart(
+      DateTime(current.startDate.year, current.startDate.month - 1),
+    );
+    return buildWeek(
+      startDate: prevStart,
+      endDate: monthEnd(prevStart),
+      rows: current.rows,
+      schoolName: current.schoolName,
+      principalName: current.principalName,
+      mode: PlanningMode.monthly,
     );
   }
 

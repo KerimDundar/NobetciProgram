@@ -19,7 +19,7 @@ import 'projects_screen.dart';
 import 'teacher_list_screen.dart';
 import 'user_guide_screen.dart';
 
-enum _HomeMenuAction { editWeek, teachers, planningMode, projects, about, guide }
+enum _HomeMenuAction { editWeek, teachers, projects, about, guide }
 
 class RosterHomeScreen extends StatefulWidget {
   const RosterHomeScreen({
@@ -82,14 +82,6 @@ class _RosterHomeScreenState extends State<RosterHomeScreen> {
                 onPressed: () => _onMenuAction(context, _HomeMenuAction.teachers),
                 child: const Text('Öğretmenler'),
               ),
-              if (widget.appSettingsState != null)
-                MenuItemButton(
-                  key: const Key('menu-item-planning'),
-                  leadingIcon: const Icon(Icons.tune),
-                  onPressed: () =>
-                      _onMenuAction(context, _HomeMenuAction.planningMode),
-                  child: const Text('Planlama Türü'),
-                ),
               MenuItemButton(
                 key: const Key('menu-item-projects'),
                 leadingIcon: const Icon(Icons.folder_outlined),
@@ -129,34 +121,37 @@ class _RosterHomeScreenState extends State<RosterHomeScreen> {
                           _DayGridPreview(week: week),
                           const SizedBox(height: 16),
                           _WeekActions(
-                            onPrevious: widget.state.goToPreviousWeek,
-                            onNext: widget.state.goToNextWeek,
+                            onPrevious: widget.state.activePlanningMode ==
+                                    PlanningMode.monthly
+                                ? widget.state.goToPreviousMonth
+                                : widget.state.goToPreviousWeek,
+                            onNext: widget.state.activePlanningMode ==
+                                    PlanningMode.monthly
+                                ? widget.state.goToNextMonth
+                                : widget.state.goToNextWeek,
+                            previousLabel: widget.state.activePlanningMode ==
+                                    PlanningMode.monthly
+                                ? 'Önceki Ay'
+                                : 'Önceki Hafta',
+                            nextLabel: widget.state.activePlanningMode ==
+                                    PlanningMode.monthly
+                                ? 'Sonraki Ay'
+                                : 'Sonraki Hafta',
                           ),
                           const SizedBox(height: 12),
-                          if (widget.appSettingsState != null)
-                            AnimatedBuilder(
-                              animation: widget.appSettingsState!,
-                              builder: (_, child) {
-                                if (widget.appSettingsState!.mode !=
-                                    PlanningMode.weekly) {
-                                  return const SizedBox.shrink();
-                                }
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: SizedBox(
-                                    width: double.infinity,
-                                    child: OutlinedButton.icon(
-                                      key: const Key('generate-monthly-button'),
-                                      onPressed: () =>
-                                          _generateMonthly(context),
-                                      icon: const Icon(
-                                        Icons.calendar_view_month,
-                                      ),
-                                      label: const Text('Aylık tablo oluştur'),
-                                    ),
-                                  ),
-                                );
-                              },
+                          if (widget.state.activePlanningMode ==
+                              PlanningMode.weekly)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  key: const Key('generate-monthly-button'),
+                                  onPressed: () => _generateMonthly(context),
+                                  icon: const Icon(Icons.calendar_view_month),
+                                  label: const Text('Aylık tablo oluştur'),
+                                ),
+                              ),
                             ),
                           _ExportActions(
                             state: widget.state,
@@ -272,7 +267,7 @@ class _RosterHomeScreenState extends State<RosterHomeScreen> {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Aylık tablo oluştur'),
         content: const Text(
-          'Mevcut haftadan başlayarak 4 haftalık aylık tablo oluşturulsun mu?',
+          'Aynı ay içindeki haftalar için tablo oluşturulsun mu? Seçili haftadan ay sonuna kadar olan haftalar dahil edilir.',
         ),
         actions: [
           TextButton(
@@ -307,8 +302,6 @@ class _RosterHomeScreenState extends State<RosterHomeScreen> {
         _openEditScreen(context);
       case _HomeMenuAction.teachers:
         _openTeacherScreen(context);
-      case _HomeMenuAction.planningMode:
-        _openPlanningModeDialog(context);
       case _HomeMenuAction.projects:
         _openProjectsScreen(context);
       case _HomeMenuAction.about:
@@ -346,18 +339,6 @@ class _RosterHomeScreenState extends State<RosterHomeScreen> {
     );
   }
 
-  Future<void> _openPlanningModeDialog(BuildContext context) async {
-    final settings = widget.appSettingsState;
-    if (settings == null) return;
-
-    final selected = await showDialog<PlanningMode>(
-      context: context,
-      builder: (_) => const _PlanningModeDialog(),
-    );
-
-    if (selected == null || !context.mounted) return;
-    await settings.setMode(selected);
-  }
 }
 
 class _DayGridPreview extends StatefulWidget {
@@ -782,7 +763,46 @@ class _ExportActionsState extends State<_ExportActions> {
     }
   }
 
+  String? _exportValidationError(PlanningMode mode) {
+    final week = widget.state.currentWeek;
+    final svc = WeekService();
+    if (mode == PlanningMode.weekly) {
+      final expectedEnd = week.startDate.add(const Duration(days: 4));
+      if (week.startDate.weekday != DateTime.monday ||
+          week.endDate != expectedEnd) {
+        return 'Haftalık planda başlangıç Pazartesi, bitiş Cuma olmalıdır.';
+      }
+    } else {
+      final expectedStart = svc.monthStart(week.startDate);
+      final expectedEnd = svc.monthEnd(week.startDate);
+      if (week.startDate != expectedStart || week.endDate != expectedEnd) {
+        return 'Aylık planda tarih tam ay olmalıdır (ayın 1. günü – son günü).';
+      }
+    }
+    return null;
+  }
+
   Future<void> _runExport(ExportFileType type) async {
+    final mode = widget.state.activePlanningMode;
+    final validationError = _exportValidationError(mode);
+    if (validationError != null) {
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Geçersiz tarih aralığı'),
+          content: Text(validationError),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Tamam'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     final snapshot = widget.state.exportSnapshot;
     final result = switch (type) {
       ExportFileType.pdf => await widget.exportFileService.exportPdf(snapshot),
@@ -809,10 +829,17 @@ class _ExportActionsState extends State<_ExportActions> {
 }
 
 class _WeekActions extends StatelessWidget {
-  const _WeekActions({required this.onPrevious, required this.onNext});
+  const _WeekActions({
+    required this.onPrevious,
+    required this.onNext,
+    this.previousLabel = 'Önceki Hafta',
+    this.nextLabel = 'Sonraki Hafta',
+  });
 
   final VoidCallback onPrevious;
   final VoidCallback onNext;
+  final String previousLabel;
+  final String nextLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -822,7 +849,7 @@ class _WeekActions extends StatelessWidget {
           child: OutlinedButton.icon(
             onPressed: onPrevious,
             icon: const Icon(Icons.arrow_upward),
-            label: const Text('Önceki Hafta'),
+            label: Text(previousLabel),
           ),
         ),
         const SizedBox(width: 12),
@@ -830,7 +857,7 @@ class _WeekActions extends StatelessWidget {
           child: FilledButton.icon(
             onPressed: onNext,
             icon: const Icon(Icons.arrow_downward),
-            label: const Text('Sonraki Hafta'),
+            label: Text(nextLabel),
           ),
         ),
       ],
@@ -904,34 +931,6 @@ class _WeekHeader extends StatelessWidget {
     final day = date.day.toString().padLeft(2, '0');
     final month = date.month.toString().padLeft(2, '0');
     return '$day.$month.${date.year}';
-  }
-}
-
-class _PlanningModeDialog extends StatelessWidget {
-  const _PlanningModeDialog();
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Planlama türü seçin'),
-      actions: [
-        TextButton(
-          key: const Key('planning-mode-cancel'),
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('İptal'),
-        ),
-        TextButton(
-          key: const Key('planning-mode-weekly'),
-          onPressed: () => Navigator.of(context).pop(PlanningMode.weekly),
-          child: const Text('Haftalık plan'),
-        ),
-        TextButton(
-          key: const Key('planning-mode-monthly'),
-          onPressed: () => Navigator.of(context).pop(PlanningMode.monthly),
-          child: const Text('Aylık plan'),
-        ),
-      ],
-    );
   }
 }
 

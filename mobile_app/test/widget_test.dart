@@ -140,126 +140,6 @@ void main() {
       expect(find.text('Planlama türü seçin'), findsNothing);
     });
 
-    testWidgets('Planlama Türü menü seçeneği dialog açar', (tester) async {
-      _useTallTestView(tester);
-      final state = RosterState.initial();
-      final appSettings = AppSettingsState();
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: RosterHomeScreen(
-            state: state,
-            appSettingsState: appSettings,
-          ),
-        ),
-      );
-
-      await tester.tap(find.byKey(const Key('home-menu-button')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('menu-item-planning')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Planlama türü seçin'), findsOneWidget);
-    });
-
-    testWidgets('haftalık seçim mode weekly yapar', (tester) async {
-      _useTallTestView(tester);
-      final state = RosterState.initial();
-      final appSettings = AppSettingsState();
-      await appSettings.setMode(PlanningMode.monthly);
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: RosterHomeScreen(
-            state: state,
-            appSettingsState: appSettings,
-          ),
-        ),
-      );
-
-      await tester.tap(find.byKey(const Key('home-menu-button')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('menu-item-planning')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('planning-mode-weekly')));
-      await tester.pumpAndSettle();
-
-      expect(appSettings.mode, PlanningMode.weekly);
-    });
-
-    testWidgets('aylık seçim mode monthly yapar', (tester) async {
-      _useTallTestView(tester);
-      final state = RosterState.initial();
-      final appSettings = AppSettingsState();
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: RosterHomeScreen(
-            state: state,
-            appSettingsState: appSettings,
-          ),
-        ),
-      );
-
-      await tester.tap(find.byKey(const Key('home-menu-button')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('menu-item-planning')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('planning-mode-monthly')));
-      await tester.pumpAndSettle();
-
-      expect(appSettings.mode, PlanningMode.monthly);
-    });
-
-    testWidgets('mode değişimi currentWeek değiştirmez', (tester) async {
-      _useTallTestView(tester);
-      final state = RosterState.initial();
-      final appSettings = AppSettingsState();
-      final initialTitle = state.currentWeek.title;
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: RosterHomeScreen(
-            state: state,
-            appSettingsState: appSettings,
-          ),
-        ),
-      );
-
-      await tester.tap(find.byKey(const Key('home-menu-button')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('menu-item-planning')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('planning-mode-monthly')));
-      await tester.pumpAndSettle();
-
-      expect(state.currentWeek.title, initialTitle);
-    });
-
-    testWidgets('iptal edilirse mode değişmez', (tester) async {
-      _useTallTestView(tester);
-      final state = RosterState.initial();
-      final appSettings = AppSettingsState();
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: RosterHomeScreen(
-            state: state,
-            appSettingsState: appSettings,
-          ),
-        ),
-      );
-
-      await tester.tap(find.byKey(const Key('home-menu-button')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('menu-item-planning')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('planning-mode-cancel')));
-      await tester.pumpAndSettle();
-
-      expect(appSettings.mode, PlanningMode.weekly);
-    });
-
     testWidgets('sağ üst yukarı/aşağı ikonları yok', (tester) async {
       _useTallTestView(tester);
       await tester.pumpWidget(const NobetciProgramApp());
@@ -323,17 +203,17 @@ void main() {
 
     testWidgets('button not visible in monthly mode', (tester) async {
       _useTallTestView(tester);
-      final state = RosterState.initial();
-      final appSettings = AppSettingsState();
-      await appSettings.setMode(PlanningMode.monthly);
+      SharedPreferences.setMockInitialValues({});
+      final state = RosterState.blank();
+      state.createProject(
+        name: 'Test',
+        planningMode: PlanningMode.monthly,
+        startDate: DateTime(2026, 5, 1),
+        endDate: DateTime(2026, 5, 31),
+      );
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: RosterHomeScreen(
-            state: state,
-            appSettingsState: appSettings,
-          ),
-        ),
+        MaterialApp(home: RosterHomeScreen(state: state)),
       );
 
       expect(
@@ -595,7 +475,7 @@ void main() {
       expect(find.byKey(const Key('planning-mode-button')), findsNothing);
     });
 
-    testWidgets('Planlama Türü hamburger menüde görünür', (tester) async {
+    testWidgets('Planlama Türü hamburger menüde görünmez', (tester) async {
       _useTallTestView(tester);
       final state = RosterState.initial();
       final appSettings = AppSettingsState();
@@ -612,7 +492,7 @@ void main() {
       await tester.tap(find.byKey(const Key('home-menu-button')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Planlama Türü'), findsOneWidget);
+      expect(find.text('Planlama Türü'), findsNothing);
     });
 
     testWidgets('menü açıkken arka plan tıklaması menüyü kapatır',
@@ -679,152 +559,69 @@ void main() {
 
     // RosterState.initial() has startDate=2026-02-02, endDate=2026-02-06.
 
-    testWidgets('weekly: 7-day end date shows tooLong snackbar, date unchanged',
-        (tester) async {
+    testWidgets('weekly: non-Monday start shows snackbar', (tester) async {
       _useTallTestView(tester);
       final state = RosterState.initial();
-      final appSettings = AppSettingsState();
 
       await tester.pumpWidget(MaterialApp(
         home: EditWeekScreen(
           state: state,
-          appSettingsState: appSettings,
-          testDatePickerOverride: (ctx, date) async => DateTime(2026, 2, 9),
+          testDatePickerOverride: (ctx, date) async => DateTime(2026, 2, 10),
         ),
       ));
 
-      await tester.tap(find.text('Bitiş 06.02.2026'));
+      await tester.tap(find.text('Hafta Başlangıcı: 02.02.2026'));
       await tester.pumpAndSettle();
 
       expect(
-        find.text('Haftalık modda en fazla 1 hafta seçilebilir.'),
+        find.text('Haftalık plan Pazartesi gününden başlamalıdır.'),
         findsOneWidget,
       );
-      expect(find.text('Bitiş 06.02.2026'), findsOneWidget);
     });
 
-    testWidgets('weekly: 6-day end date is valid, date changes', (tester) async {
+    testWidgets('weekly: Monday start auto-sets Friday end', (tester) async {
       _useTallTestView(tester);
       final state = RosterState.initial();
-      final appSettings = AppSettingsState();
 
       await tester.pumpWidget(MaterialApp(
         home: EditWeekScreen(
           state: state,
-          appSettingsState: appSettings,
-          testDatePickerOverride: (ctx, date) async => DateTime(2026, 2, 8),
+          testDatePickerOverride: (ctx, date) async => DateTime(2026, 3, 2),
         ),
       ));
 
-      await tester.tap(find.text('Bitiş 06.02.2026'));
+      await tester.tap(find.text('Hafta Başlangıcı: 02.02.2026'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Bitiş 08.02.2026'), findsOneWidget);
+      expect(find.text('Hafta Başlangıcı: 02.03.2026'), findsOneWidget);
+      expect(find.text('Bitiş: 06.03.2026'), findsOneWidget);
     });
 
     testWidgets(
-        'monthly: end date pick with non-first-day start shows notFullMonth',
+        'monthly: picking any day auto-sets start to first and end to last of month',
         (tester) async {
       _useTallTestView(tester);
-      final state = RosterState.initial(); // startDate=2026-02-02
-      final appSettings = AppSettingsState();
-      await appSettings.setMode(PlanningMode.monthly);
-
-      await tester.pumpWidget(MaterialApp(
-        home: EditWeekScreen(
-          state: state,
-          appSettingsState: appSettings,
-          testDatePickerOverride: (ctx, date) async => DateTime(2026, 2, 28),
-        ),
-      ));
-
-      await tester.tap(find.text('Bitiş 06.02.2026'));
-      await tester.pumpAndSettle();
-
-      expect(
-        find.textContaining('Aylık planda yalnızca bir tam ay seçilebilir.'),
-        findsOneWidget,
+      SharedPreferences.setMockInitialValues({});
+      final state = RosterState.blank();
+      state.createProject(
+        name: 'Test',
+        planningMode: PlanningMode.monthly,
+        startDate: DateTime(2026, 2, 1),
+        endDate: DateTime(2026, 2, 28),
       );
-      expect(find.text('Bitiş 06.02.2026'), findsOneWidget);
-    });
-
-    testWidgets(
-        'monthly: picking start auto-sets start to first and end to last of month',
-        (tester) async {
-      _useTallTestView(tester);
-      final state = RosterState.initial();
-      final appSettings = AppSettingsState();
-      await appSettings.setMode(PlanningMode.monthly);
 
       await tester.pumpWidget(MaterialApp(
         home: EditWeekScreen(
           state: state,
-          appSettingsState: appSettings,
           testDatePickerOverride: (ctx, date) async => DateTime(2026, 3, 15),
         ),
       ));
 
-      await tester.tap(find.text('Başlangıç 02.02.2026'));
+      await tester.tap(find.text('Ay Seç: Şubat 2026'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Başlangıç 01.03.2026'), findsOneWidget);
-      expect(find.text('Bitiş 31.03.2026'), findsOneWidget);
-    });
-
-    testWidgets('monthly: full month end date is valid, date changes',
-        (tester) async {
-      _useTallTestView(tester);
-      final weekService = WeekService();
-      final state = RosterState(
-        currentWeek: weekService.buildWeek(
-          startDate: DateTime(2026, 2, 1),
-          endDate: DateTime(2026, 2, 28),
-          rows: const [],
-          schoolName: '',
-          principalName: '',
-        ),
-        hasActiveRoster: true,
-      );
-      final appSettings = AppSettingsState();
-      await appSettings.setMode(PlanningMode.monthly);
-
-      await tester.pumpWidget(MaterialApp(
-        home: EditWeekScreen(
-          state: state,
-          appSettingsState: appSettings,
-          testDatePickerOverride: (ctx, date) async => DateTime(2026, 2, 28),
-        ),
-      ));
-
-      // Pick end=2026-02-28 with start=2026-02-01 → valid full month
-      await tester.tap(find.text('Bitiş 28.02.2026'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Bitiş 28.02.2026'), findsOneWidget);
-      expect(find.textContaining('Aylık planda'), findsNothing);
-    });
-
-    testWidgets('startDate after endDate shows invalidRange snackbar',
-        (tester) async {
-      _useTallTestView(tester);
-      final state = RosterState.initial();
-      final appSettings = AppSettingsState();
-
-      await tester.pumpWidget(MaterialApp(
-        home: EditWeekScreen(
-          state: state,
-          appSettingsState: appSettings,
-          testDatePickerOverride: (ctx, date) async => DateTime(2026, 2, 8),
-        ),
-      ));
-
-      await tester.tap(find.text('Başlangıç 02.02.2026'));
-      await tester.pumpAndSettle();
-
-      expect(
-        find.text('Başlangıç tarihi bitiş tarihinden sonra olamaz.'),
-        findsOneWidget,
-      );
+      expect(find.text('Ay Seç: Mart 2026'), findsOneWidget);
+      expect(find.text('Tarih aralığı: 01.03.2026 – 31.03.2026'), findsOneWidget);
     });
   });
 

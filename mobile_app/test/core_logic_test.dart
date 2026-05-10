@@ -860,6 +860,28 @@ void main() {
       service.generateMonthlyFromWeek(base);
       expect(base.rows, same(originalRows));
     });
+
+    test('generateMonthlyFromWeek stops before next month', () {
+      final base = service.buildWeek(
+        startDate: DateTime(2026, 5, 25),
+        endDate: DateTime(2026, 5, 29),
+        rows: const [],
+      );
+      final weeks = service.generateMonthlyFromWeek(base);
+      expect(weeks, hasLength(1));
+      expect(weeks[0].startDate, DateTime(2026, 5, 25));
+    });
+
+    test('generateMonthlyFromWeek includes all same-month Mondays', () {
+      final base = service.buildWeek(
+        startDate: DateTime(2026, 5, 18),
+        endDate: DateTime(2026, 5, 22),
+        rows: const [],
+      );
+      final weeks = service.generateMonthlyFromWeek(base);
+      expect(weeks, hasLength(2));
+      expect(weeks[1].startDate, DateTime(2026, 5, 25));
+    });
   });
 
   group('WeekGridProjectionService', () {
@@ -1138,6 +1160,132 @@ void main() {
         weeks[0].startDate.add(const Duration(days: 21)),
       );
     });
+
+    test('monthly project exportSnapshot is single week (full month span)', () {
+      final state = RosterState.blank();
+      state.createProject(
+        name: 'Nisan',
+        planningMode: PlanningMode.monthly,
+        startDate: DateTime(2026, 4, 1),
+        endDate: DateTime(2026, 4, 30),
+      );
+      final snapshot = state.exportSnapshot;
+      expect(snapshot.isSingleWeek, isTrue);
+      expect(snapshot.weeks.single.startDate, DateTime(2026, 4, 1));
+      expect(snapshot.weeks.single.endDate, DateTime(2026, 4, 30));
+    });
+
+    // Test 1 — Haftalık → Aylık proje geçişinde export karışmamalı
+    test(
+        'createProject clears generatedMonthlyWeeks: weekly generated weeks do not leak into new monthly project',
+        () {
+      final state = RosterState.blank();
+      state.createProject(
+        name: 'Haftalık',
+        planningMode: PlanningMode.weekly,
+        startDate: DateTime(2026, 2, 2),
+        endDate: DateTime(2026, 2, 6),
+      );
+      state.generateMonthlyWeeks();
+      expect(state.generatedMonthlyWeeks, isNotNull);
+      expect(state.generatedMonthlyWeeks!.length, greaterThan(1));
+
+      state.createProject(
+        name: 'Aylık',
+        planningMode: PlanningMode.monthly,
+        startDate: DateTime(2026, 5, 1),
+        endDate: DateTime(2026, 5, 31),
+      );
+
+      expect(state.generatedMonthlyWeeks, isNull);
+      final snapshot = state.exportSnapshot;
+      expect(snapshot.isSingleWeek, isTrue);
+      expect(snapshot.weeks.single.startDate, DateTime(2026, 5, 1));
+      expect(snapshot.weeks.single.endDate, DateTime(2026, 5, 31));
+    });
+
+    // Test 2 — Aylık → Haftalık proje geçişinde export karışmamalı
+    test(
+        'createProject isolation: monthly project data does not appear in subsequent weekly project export',
+        () {
+      final state = RosterState.blank();
+      state.createProject(
+        name: 'Aylık',
+        planningMode: PlanningMode.monthly,
+        startDate: DateTime(2026, 5, 1),
+        endDate: DateTime(2026, 5, 31),
+      );
+      final monthlySnapshot = state.exportSnapshot;
+      expect(monthlySnapshot.weeks.single.startDate, DateTime(2026, 5, 1));
+
+      state.createProject(
+        name: 'Haftalık',
+        planningMode: PlanningMode.weekly,
+        startDate: DateTime(2026, 3, 2),
+        endDate: DateTime(2026, 3, 6),
+      );
+
+      expect(state.generatedMonthlyWeeks, isNull);
+      final snapshot = state.exportSnapshot;
+      expect(snapshot.isSingleWeek, isTrue);
+      expect(snapshot.weeks.single.startDate, DateTime(2026, 3, 2));
+      expect(snapshot.weeks.single.endDate, DateTime(2026, 3, 6));
+    });
+
+    // Test 3 — openProject geçişinde generated state resetlenmeli
+    test(
+        'openProject clears generatedMonthlyWeeks: project B does not see project A generated state',
+        () {
+      final state = RosterState.blank();
+      final idA = state.createProject(
+        name: 'A',
+        planningMode: PlanningMode.weekly,
+        startDate: DateTime(2026, 2, 2),
+        endDate: DateTime(2026, 2, 6),
+      );
+      state.generateMonthlyWeeks();
+      expect(state.generatedMonthlyWeeks, isNotNull);
+
+      final idB = state.createProject(
+        name: 'B',
+        planningMode: PlanningMode.monthly,
+        startDate: DateTime(2026, 4, 1),
+        endDate: DateTime(2026, 4, 30),
+      );
+      state.openProject(idA);
+      state.generateMonthlyWeeks();
+      state.openProject(idB);
+
+      expect(state.generatedMonthlyWeeks, isNull);
+      final snapshot = state.exportSnapshot;
+      expect(snapshot.weeks.single.startDate, DateTime(2026, 4, 1));
+    });
+
+    // Test 4 — PDF ve Excel aynı aktif proje snapshot'ını kullanmalı
+    test(
+        'exportSnapshot is stable for same active project: PDF and Excel see identical data',
+        () {
+      final state = RosterState.blank();
+      state.createProject(
+        name: 'Proje',
+        planningMode: PlanningMode.monthly,
+        startDate: DateTime(2026, 6, 1),
+        endDate: DateTime(2026, 6, 30),
+      );
+
+      final snapshotForPdf = state.exportSnapshot;
+      final snapshotForExcel = state.exportSnapshot;
+
+      expect(snapshotForPdf.weeks.length, snapshotForExcel.weeks.length);
+      expect(
+        snapshotForPdf.weeks.single.startDate,
+        snapshotForExcel.weeks.single.startDate,
+      );
+      expect(
+        snapshotForPdf.weeks.single.endDate,
+        snapshotForExcel.weeks.single.endDate,
+      );
+    });
   });
 
   group('Export services', () {
@@ -1233,14 +1381,15 @@ void main() {
       expect(table.bodyRows[0], [
         'Bahçe-1',
         'Ali',
-        'Bora',
+        '',
         'Can',
         'Deniz',
         'Ece',
       ]);
-      expect(table.bodyRows[1], ['', '', '', '', 'Derya', '']);
+      expect(table.bodyRows[1], ['bahçe–1', '', 'Bora', '', 'Derya', '']);
       expect(table.bodyRows[2], ['BAHÇE 1', 'ALİ', '', '', '', '']);
-      expect(_hasSpan(table.spans, 0, 0, 1), isTrue);
+      expect(_hasSpan(table.spans, 0, 0, 1), isFalse);
+      expect(_hasSpan(table.spans, 3, 0, 1), isTrue);
       expect(_hasSpan(table.spans, 0, 0, 2), isFalse);
       expect(table.spans.where((span) => span.column == 4), isEmpty);
     });
@@ -1290,7 +1439,7 @@ void main() {
 
         final table = service.buildWeekTable(snapshot.weeks.single);
 
-        expect(_hasSpan(table.spans, 0, 0, 1), isTrue);
+        expect(_hasSpan(table.spans, 0, 0, 1), isFalse);
         expect(_hasSpan(table.spans, 0, 0, 2), isFalse);
         expect(_hasSpan(table.spans, 1, 0, 1), isTrue);
         expect(table.bodyRows[0][1], 'Ali\nAyse');
@@ -1348,9 +1497,9 @@ void main() {
             ],
           ),
         );
-        expect(_hasSpan(two.spans, 0, 0, 1), isTrue);
+        expect(_hasSpan(two.spans, 0, 0, 1), isFalse);
         expect(_hasSpan(two.spans, 1, 0, 1), isTrue);
-        expect(two.bodyRows[1], ['', '', '', '', '', '']);
+        expect(two.bodyRows[1], ['kat 1', '', '', '', '', '']);
 
         final three = service.buildWeekTable(
           Week(
@@ -1364,7 +1513,7 @@ void main() {
             ],
           ),
         );
-        expect(_hasSpan(three.spans, 0, 0, 1), isTrue);
+        expect(_hasSpan(three.spans, 0, 0, 1), isFalse);
         expect(_hasSpan(three.spans, 0, 0, 2), isFalse);
         expect(_hasSpan(three.spans, 1, 0, 1), isTrue);
         expect(three.bodyRows.map((row) => row[1]), ['Ali', '', 'Veli']);
@@ -1389,13 +1538,13 @@ void main() {
             ],
           ),
         );
-        expect(_hasSpan(fourPlus.spans, 0, 0, 1), isTrue);
-        expect(_hasSpan(fourPlus.spans, 0, 2, 3), isTrue);
+        expect(_hasSpan(fourPlus.spans, 0, 0, 1), isFalse);
+        expect(_hasSpan(fourPlus.spans, 0, 2, 3), isFalse);
         expect(_hasSpan(fourPlus.spans, 0, 0, 4), isFalse);
         expect(_hasSpan(fourPlus.spans, 1, 0, 1), isTrue);
         expect(_hasSpan(fourPlus.spans, 2, 2, 3), isTrue);
         expect(fourPlus.bodyRows[0], ['Kat-1', 'Ali', '', '', '', '']);
-        expect(fourPlus.bodyRows[1], ['', '', '', '', '', '']);
+        expect(fourPlus.bodyRows[1], ['kat 1', '', '', '', '', '']);
         expect(fourPlus.bodyRows[2], [
           'KAT\u20131',
           '',
@@ -1404,7 +1553,7 @@ void main() {
           '',
           '',
         ]);
-        expect(fourPlus.bodyRows[3], ['', '', '', '', '', '']);
+        expect(fourPlus.bodyRows[3], ['Kat\u20111', '', '', '', '', '']);
         expect(fourPlus.bodyRows[4], ['KAT 1', '', '', '', '', '']);
       },
     );
@@ -1445,15 +1594,15 @@ void main() {
         expect(table.bodyRows, hasLength(3));
         expect(table.bodyRows.map((row) => row[1]), ['Ali', 'Veli', 'Can']);
         expect(table.bodyRows.map((row) => row[2]), ['Ayşe', '', '']);
-        expect(_hasSpan(table.spans, 0, 0, 1), isTrue);
+        expect(_hasSpan(table.spans, 0, 0, 1), isFalse);
         expect(_hasSpan(table.spans, 0, 0, 2), isFalse);
         expect(_hasSpan(table.spans, 1, 0, 1), isFalse);
-        expect(_hasSpan(table.spans, 2, 0, 1), isTrue);
-        expect(_pdfBodyCell(pdfCells, 0, 0).rowSpan, 2);
-        expect(_hasPdfBodyCell(pdfCells, 0, 1), isFalse);
+        expect(_hasSpan(table.spans, 2, 0, 1), isFalse);
+        expect(_pdfBodyCell(pdfCells, 0, 0).rowSpan, 1);
+        expect(_hasPdfBodyCell(pdfCells, 0, 1), isTrue);
         expect(_pdfBodyCell(pdfCells, 0, 2).rowSpan, 1);
-        expect(_pdfBodyCell(pdfCells, 2, 0).rowSpan, 2);
-        expect(_hasPdfBodyCell(pdfCells, 2, 1), isFalse);
+        expect(_pdfBodyCell(pdfCells, 2, 0).rowSpan, 1);
+        expect(_hasPdfBodyCell(pdfCells, 2, 1), isTrue);
       },
     );
 
@@ -1463,23 +1612,23 @@ void main() {
       final twoCells = pdfService.debugBodyCells(
         _duplicateLocationWeek(startDate, endDate, 2),
       );
-      expect(_pdfBodyCell(twoCells, 0, 0).rowSpan, 2);
-      expect(_hasPdfBodyCell(twoCells, 0, 1), isFalse);
+      expect(_pdfBodyCell(twoCells, 0, 0).rowSpan, 1);
+      expect(_hasPdfBodyCell(twoCells, 0, 1), isTrue);
 
       final threeCells = pdfService.debugBodyCells(
         _duplicateLocationWeek(startDate, endDate, 3),
       );
-      expect(_pdfBodyCell(threeCells, 0, 0).rowSpan, 2);
-      expect(_hasPdfBodyCell(threeCells, 0, 1), isFalse);
+      expect(_pdfBodyCell(threeCells, 0, 0).rowSpan, 1);
+      expect(_hasPdfBodyCell(threeCells, 0, 1), isTrue);
       expect(_pdfBodyCell(threeCells, 0, 2).rowSpan, 1);
 
       final fourCells = pdfService.debugBodyCells(
         _duplicateLocationWeek(startDate, endDate, 4),
       );
-      expect(_pdfBodyCell(fourCells, 0, 0).rowSpan, 2);
-      expect(_hasPdfBodyCell(fourCells, 0, 1), isFalse);
-      expect(_pdfBodyCell(fourCells, 0, 2).rowSpan, 2);
-      expect(_hasPdfBodyCell(fourCells, 0, 3), isFalse);
+      expect(_pdfBodyCell(fourCells, 0, 0).rowSpan, 1);
+      expect(_hasPdfBodyCell(fourCells, 0, 1), isTrue);
+      expect(_pdfBodyCell(fourCells, 0, 2).rowSpan, 1);
+      expect(_hasPdfBodyCell(fourCells, 0, 3), isTrue);
     });
 
     test('PDF footer renders principal name and title on separate lines', () {
@@ -1570,10 +1719,12 @@ void main() {
       expect(_cellText(sheet, 2, 0), 'NOBET YERI');
       expect(_cellText(sheet, 3, 0), 'Bahçe-1');
       expect(_cellText(sheet, 3, 1), 'Ali');
-      expect(_cellText(sheet, 3, 2), 'Ayşe');
-      expect(sheet.spannedItems, contains('A4:A5'));
-      expect(sheet.spannedItems, contains('B4:B5'));
-      expect(sheet.spannedItems, contains('C4:C5'));
+      expect(_cellText(sheet, 3, 2), '');
+      expect(_cellText(sheet, 4, 0), 'bahçe–1');
+      expect(_cellText(sheet, 4, 2), 'Ayşe');
+      expect(sheet.spannedItems, isNot(contains('A4:A5')));
+      expect(sheet.spannedItems, isNot(contains('B4:B5')));
+      expect(sheet.spannedItems, isNot(contains('C4:C5')));
     });
 
     test('PDF and Excel keep multi teacher cells on separate lines', () async {

@@ -17,7 +17,7 @@ class UserGuideScreen extends StatelessWidget {
               title: 'Uygulama Ne İşe Yarar?',
               children: [
                 const Text(
-                  'Nöbetçi Program, okul nöbet çizelgelerini haftalık veya aylık olarak '
+                  'Okul Nöbet Çizelgem, okul nöbet çizelgelerini haftalık veya aylık olarak '
                   'hazırlamak, düzenlemek ve PDF/Excel çıktısı almak için geliştirilmiştir.',
                 ),
                 const SizedBox(height: 8),

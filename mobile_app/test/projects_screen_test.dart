@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:nobetci_program_mobile/models/planning_mode.dart';
 import 'package:nobetci_program_mobile/services/week_service.dart';
 import 'package:nobetci_program_mobile/state/app_settings_state.dart';
 import 'package:nobetci_program_mobile/state/roster_state.dart';
@@ -107,13 +108,13 @@ void main() {
       expect(find.text('Yeni proje oluştur'), findsNothing);
     });
 
-    testWidgets('dialog onaylayınca EditWeekScreen açılır', (tester) async {
+    testWidgets('dialog onaylayınca TeacherListScreen açılır', (tester) async {
       _useTallTestView(tester);
       await tester.pumpWidget(_buildProjects());
       await tester.tap(find.byKey(const Key('projects-create-button')));
       await tester.pumpAndSettle();
       await _fillAndSubmitDialog(tester, 'Test Projesi');
-      expect(find.text('Hafta Düzenle'), findsOneWidget);
+      expect(find.text('Öğretmenler'), findsOneWidget);
     });
 
     testWidgets('EditWeekScreen kaydet sonrası hasActiveRoster true olur',
@@ -142,6 +143,9 @@ void main() {
       await tester.tap(find.byKey(const Key('projects-create-button')));
       await tester.pumpAndSettle();
       await _fillAndSubmitDialog(tester, 'Okulum');
+      expect(find.text('Öğretmenler'), findsOneWidget);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
       expect(find.text('Hafta Düzenle'), findsOneWidget);
       await tester.tap(find.text('Kaydet'));
       await tester.pumpAndSettle();
@@ -170,15 +174,15 @@ void main() {
 
     testWidgets('aylık kart plan etiketi görünür', (tester) async {
       _useTallTestView(tester);
-      SharedPreferences.setMockInitialValues({'planning_mode': 'monthly'});
-      final appSettings = AppSettingsState();
-      await appSettings.load();
-      await tester.pumpWidget(
-        _buildProjects(
-          state: RosterState.initial(),
-          appSettings: appSettings,
-        ),
+      SharedPreferences.setMockInitialValues({});
+      final state = RosterState.blank();
+      state.createProject(
+        name: 'Aylık Çizelge',
+        planningMode: PlanningMode.monthly,
+        startDate: DateTime(2026, 5, 1),
+        endDate: DateTime(2026, 5, 31),
       );
+      await tester.pumpWidget(_buildProjects(state: state));
       await tester.pump();
       expect(find.text('Aylık Plan'), findsOneWidget);
     });
@@ -280,12 +284,17 @@ void main() {
       await tester.tap(find.byKey(const Key('new-project-create')));
       await tester.pumpAndSettle();
 
-      final svc = WeekService();
+      expect(find.text('Öğretmenler'), findsOneWidget);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+
       final now = DateTime.now();
-      final start = svc.monthStart(now);
-      String fmt(DateTime d) =>
-          '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
-      expect(find.text('Başlangıç ${fmt(start)}'), findsOneWidget);
+      const months = [
+        'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+        'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
+      ];
+      final monthLabel = '${months[now.month - 1]} ${now.year}';
+      expect(find.text('Ay Seç: $monthLabel'), findsOneWidget);
     });
 
     testWidgets('kart tıklaması önceki ekrana döner', (tester) async {
